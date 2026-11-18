@@ -115,7 +115,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2>Voice Agent</h2>
-          <p>Real-time conversational telephony with live transcript and CRM notes synchronization.</p>
+          <p>Browser voice session: replies are spoken with your browser's text-to-speech. You type or pick the customer's lines (no speech-to-text). No phone call is placed.</p>
         </div>
 
         {/* Lead Selector */}
@@ -311,7 +311,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
             <div className="card" style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '6px' }}>
                 <CheckCircle2 size={15} color="#16a34a" />
-                <span>Call Summary &amp; CRM Sync</span>
+                <span>Call summary (saved to the internal CRM)</span>
               </div>
 
               <div style={{ fontSize: '12px', color: '#15803d', lineHeight: 1.4, marginBottom: '8px' }}>

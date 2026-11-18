@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import (
     User, Lead, Conversation, Message, KnowledgeDocument, KnowledgeChunk, FollowUp, Meeting,
-    ObjectionRecord, AgentActivityLog,
+    ObjectionRecord,
 )
 from app.rag.engine import DocumentChunker, index_chunks
+from app.services.activity import agent_run
 
 # --------------------------------------------------------------------------- knowledge base
 KNOWLEDGE_DOCS = [
@@ -121,33 +122,33 @@ CONVERSATIONS = {
     "Sneha Kulkarni": ("chat", "Positive", "ready_to_buy",
         "250 embroidered hoodies for an offsite; delivery-time concern handled with express production; sample call booked.", [
         ("customer", None, "Hi, we need around 250 hoodies with our logo embroidered for a company offsite.", "question", "Neutral", None),
-        ("ai_agent", "Knowledge RAG Agent", "Our French Terry Hoodie is ₹1,151 per piece at the 250+ slab, and left-chest embroidery up to 8,000 stitches is ₹70 per piece. Would you like a mockup of your logo?", "question", "Neutral", None),
+        ("ai_agent", "Knowledge Agent", "Our French Terry Hoodie is ₹1,151 per piece at the 250+ slab, and left-chest embroidery up to 8,000 stitches is ₹70 per piece. Would you like a mockup of your logo?", "question", "Neutral", None),
         ("customer", None, "The offsite is in 12 days. Your normal lead time is too long for us.", "objection", "Hesitant", "delivery"),
-        ("ai_agent", "Objection Handling Agent", "Understood. Express production takes 5-7 business days for orders up to 250 pieces, at a 12% surcharge, so we can still make your date once the artwork is approved. Shall I set up a quick sample review call?", "objection", "Hesitant", "delivery"),
+        ("ai_agent", "Objection Agent", "Understood. Express production takes 5-7 business days for orders up to 250 pieces, at a 12% surcharge, so we can still make your date once the artwork is approved. Shall I set up a quick sample review call?", "objection", "Hesitant", "delivery"),
         ("customer", None, "Yes, let's do a call tomorrow afternoon.", "ready_to_buy", "Positive", None),
     ]),
     "Arjun Mehta": ("whatsapp", "Hesitant", "objection",
         "500 oversized tees for resale; price objection answered with the 500+ slab.", [
         ("customer", None, "What's your best price for 500 oversized tees?", "question", "Neutral", None),
-        ("ai_agent", "Knowledge RAG Agent", "For 500 or more Heavyweight Oversized Tees the bulk price is ₹519 per piece, excluding GST, with colours and sizes mixable.", "question", "Neutral", None),
+        ("ai_agent", "Knowledge Agent", "For 500 or more Heavyweight Oversized Tees the bulk price is ₹519 per piece, excluding GST, with colours and sizes mixable.", "question", "Neutral", None),
         ("customer", None, "That's too expensive, I get similar tees for less.", "objection", "Hesitant", "price"),
-        ("ai_agent", "Objection Handling Agent", "I hear you. ₹519 is already our deepest slab at 35% off MRP, for 240 GSM pre-shrunk cotton that holds up to resale. Would a sample piece help you compare quality before you decide?", "objection", "Hesitant", "price"),
+        ("ai_agent", "Objection Agent", "I hear you. ₹519 is already our deepest slab at 35% off MRP, for 240 GSM pre-shrunk cotton that holds up to resale. Would a sample piece help you compare quality before you decide?", "objection", "Hesitant", "price"),
     ]),
     "Ananya Iyer": ("chat", "Neutral", "objection",
         "Wants 40 tees to test; MOQ objection answered with the trial order.", [
         ("customer", None, "I only need about 40 tees to test my Instagram store. Is that possible?", "objection", "Neutral", "moq"),
-        ("ai_agent", "Objection Handling Agent", "Yes. Bulk pricing starts at 50 pieces, but our trial order covers 20 to 49 pieces of one style at 10% off MRP, plain or one-colour print. Would you like to start with that?", "objection", "Neutral", "moq"),
+        ("ai_agent", "Objection Agent", "Yes. Bulk pricing starts at 50 pieces, but our trial order covers 20 to 49 pieces of one style at 10% off MRP, plain or one-colour print. Would you like to start with that?", "objection", "Neutral", "moq"),
         ("customer", None, "Okay, send me the colours available for the oversized tee.", "question", "Positive", None),
     ]),
     "Harsh Agarwal": ("email", "Hesitant", "objection",
         "600 sweatshirts for 3 stores; comparing with another supplier.", [
         ("customer", None, "We are also getting quotes from a supplier in Ludhiana who is cheaper for sweatshirts.", "objection", "Hesitant", "competitor"),
-        ("ai_agent", "Objection Handling Agent", "That makes sense to compare. Our Crewneck Sweatshirt is 300 GSM fleece-back cotton, we can add your store labels from 250 pieces, and defective pieces are replaced free if reported within 7 days. Shall I send a sample so you can compare side by side?", "objection", "Hesitant", "competitor"),
+        ("ai_agent", "Objection Agent", "That makes sense to compare. Our Crewneck Sweatshirt is 300 GSM fleece-back cotton, we can add your store labels from 250 pieces, and defective pieces are replaced free if reported within 7 days. Shall I send a sample so you can compare side by side?", "objection", "Hesitant", "competitor"),
     ]),
     "Priya Nair": ("chat", "Positive", "ready_to_buy",
         "Boutique owner planning a festive collection; showroom visit booked.", [
         ("customer", None, "Do you have linen kurtas in pastel colours? I run a boutique in Kochi.", "question", "Neutral", None),
-        ("ai_agent", "Knowledge RAG Agent", "Yes, our Linen-Blend Kurta (55% linen, 45% cotton) comes in 5 colours, sizes S to 3XL, and is ₹1,169 per piece at the 100+ slab. Would you like to see the fabric in person?", "question", "Neutral", None),
+        ("ai_agent", "Knowledge Agent", "Yes, our Linen-Blend Kurta (55% linen, 45% cotton) comes in 5 colours, sizes S to 3XL, and is ₹1,169 per piece at the 100+ slab. Would you like to see the fabric in person?", "question", "Neutral", None),
         ("customer", None, "I'll be in Bengaluru next week, can I visit the showroom?", "ready_to_buy", "Positive", None),
     ]),
 }
@@ -181,8 +182,7 @@ OBJECTION_TECHNIQUES = {"delivery": "Express production option", "price": "Volum
 def seed_database(db: Session):
     """Seeds an empty database. Called at startup and by POST /api/demo/reset."""
     from app.agents.lead_research_agent import LeadResearchAgent
-    from app.agents.lead_scoring_agent import LeadScoringAgent
-    from app.agents.qualification_agent import QualificationAgent
+    from app.agents.qualification_agent import LeadQualificationAgent
 
     if db.query(User).count() == 0:
         db.add_all([
@@ -246,22 +246,19 @@ def seed_database(db: Session):
     db.flush()
 
     for lead in leads.values():
-        research = LeadResearchAgent.research_lead(lead)
-        lead.research_summary, lead.pain_points = research["research_summary"], research["pain_points"]
-        lead.buying_intent = research["buying_intent"]
-        qual = QualificationAgent.evaluate_bant(lead)
-        b = qual["bant_breakdown"]
-        lead.qualification_status = qual["qualification_status"]
-        lead.budget_qualified, lead.authority_qualified = b["budget_qualified"], b["authority_qualified"]
-        lead.need_qualified, lead.timeline_qualified = b["need_qualified"], b["timeline_qualified"]
-        if lead.name in SEED_BANT:
-            lead.bant_json = json.dumps({k: {"status": st, "evidence": ev} for k, (st, ev) in SEED_BANT[lead.name].items()})
-        score = LeadScoringAgent.apply(lead, db)
+        # Real agent runs at seed time; each writes a timed activity-log row.
+        with agent_run(db, "Research Agent", "research", lead) as run:
+            research = LeadResearchAgent.research_lead(lead)
+            lead.research_summary, lead.pain_points = research["research_summary"], research["pain_points"]
+            lead.buying_intent = research["buying_intent"]
+            run["description"] = f"Demo seed: profiled lead as '{research['persona_type']}'."
+        with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
+            LeadQualificationAgent.apply_bant_checklist(lead)
+            if lead.name in SEED_BANT:
+                lead.bant_json = json.dumps({k: {"status": st, "evidence": ev} for k, (st, ev) in SEED_BANT[lead.name].items()})
+            score = LeadQualificationAgent.apply(lead, db)
+            run["description"] = f"Demo seed: BANT checklist and score {score['lead_score']}/100 ({score['score_category']})."
         lead.next_best_action = research["next_best_action"]
-        db.add(AgentActivityLog(agent_name="Lead Scoring Agent", action_type="score", lead_id=lead.id,
-                                lead_name=lead.name, created_at=lead.created_at,
-                                description=f"Scored {score['lead_score']}/100 ({score['score_category']}) at demo seed.",
-                                status="success"))
 
     # Next actions for leads in active conversations
     leads["Sneha Kulkarni"].next_best_action = "Run sample review call and confirm express production"
@@ -274,14 +271,14 @@ def seed_database(db: Session):
     db.add_all([
         Meeting(lead_id=leads["Sneha Kulkarni"].id, title="Sample review call: embroidered hoodies, Finvolve",
                 meeting_type="product_demo", scheduled_time=day, duration_minutes=30, status="scheduled",
-                location_or_link="Google Meet", notes="Review logo mockup and confirm express production."),
+                location_or_link="Video call (link not generated)", notes="Review logo mockup and confirm express production."),
         Meeting(lead_id=leads["Priya Nair"].id, title="Showroom visit: Threadline Boutique festive collection",
                 meeting_type="showroom_visit", scheduled_time=day + timedelta(days=5, hours=-3), duration_minutes=60,
                 status="scheduled", location_or_link="Celestial Wear Studio, Indiranagar, Bengaluru",
                 notes="Show linen-blend kurta colours and crew tee fabric."),
         Meeting(lead_id=leads["Arjun Mehta"].id, title="Product demo: oversized tee quality check, UrbanDrip",
                 meeting_type="product_demo", scheduled_time=day + timedelta(days=2, hours=-2), duration_minutes=30,
-                status="scheduled", location_or_link="Google Meet", notes="Walk through fabric weight and print options."),
+                status="scheduled", location_or_link="Video call (link not generated)", notes="Walk through fabric weight and print options."),
     ])
 
     db.add_all([

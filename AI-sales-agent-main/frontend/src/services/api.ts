@@ -207,6 +207,10 @@ export const api = {
     return request('/ml/lead-scoring');
   },
 
+  async getIntegrations(): Promise<{ integrations: any[] }> {
+    return request('/integrations');
+  },
+
   // Demo Controls
   async resetDemoData(): Promise<any> {
     return request('/demo/reset', { method: 'POST' });

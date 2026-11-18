@@ -4,13 +4,13 @@ from app.services.llm import chat, build_sales_system, provider_label, LLMUnavai
 
 class SalesCommunicationAgent:
     """
-    Agent D: Sales Communication Agent
+    Agent 3 of 10: Communication Agent
     Responsibilities:
-    - Generates personalized emails, WhatsApp messages, and omnichannel chat responses
+    - Writes chat replies (LLM or template) and email / WhatsApp drafts; drafts are not sent
     - Incorporates customer profile, preferred location, and budget
     - Ensures warm, consultative, and non-pushy enterprise tone
     """
-    AGENT_NAME = "Sales Communication Agent"
+    AGENT_NAME = "Communication Agent"
 
     @classmethod
     def generate_outreach(cls, lead: Lead, channel: str = "whatsapp") -> Dict[str, Any]:

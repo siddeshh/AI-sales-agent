@@ -13,12 +13,12 @@ It is a FastAPI + SQLite backend with a React 19 + Vite frontend, built as a mul
 
 ## 3. The 10 agents
 
-The code in `backend/app/agents/` has 11 files because scoring and BANT are separate. For this project they count as one agent: **Lead Qualification**.
+Exactly 10 agents (canonical list: `AGENTS` in `backend/app/services/activity.py`). Scoring and BANT are one agent, **Lead Qualification** (`qualification_agent.py`). The Orchestrator routes and is not counted.
 
 | # | Agent | File(s) | What it does |
 |---|---|---|---|
 | 1 | **Research** | `lead_research_agent.py` | Builds a buyer persona, pain points, motivations and buying intent from the lead's fields. |
-| 2 | **Lead Qualification** (scoring + BANT) | `lead_scoring_agent.py`, `qualification_agent.py` | Gives a 0–100 score with a factor-by-factor breakdown, a category (Cold/Warm/Qualified/Hot) and a conversion probability, then checks Budget/Authority/Need/Timeline and returns Qualified / Partially Qualified / Unqualified. |
+| 2 | **Lead Qualification** (scoring + BANT) | `qualification_agent.py` | 0–100 score with factor breakdown (`final = round(0.7 × base) + BANT bonus`) and BANT: lead-form checklist at intake, LLM re-read of the conversation after each message. |
 | 3 | **Communication** | `communication_agent.py` | Drafts personalised email, WhatsApp and chat outreach for a lead. |
 | 4 | **Knowledge (RAG)** | `rag_agent.py`, `rag/engine.py` | Chunks uploaded docs, embeds them, retrieves the top chunks for a question and answers only from them. Below the confidence threshold it says it doesn't know and flags for a human. |
 | 5 | **Objection** | `objection_agent.py` | Detects price, timing, competitor, authority, trust and not-interested objections and answers with a named technique. Each one is recorded in `ObjectionRecord`. |
@@ -97,16 +97,19 @@ Known limits:
 | Document upload | Plain-text decode only. Files with no readable text are rejected with a 400; PDF/DOCX extraction isn't built yet. |
 | Voice | **Text-to-speech is real**: it uses the browser's `speechSynthesis`. **There is no speech-to-text** and no telephony; the voice agent uses keyword intents. It introduces itself as Celestial Wear's AI assistant and says it is an AI. Duration is real elapsed time, and the summary lists what the customer said. |
 | Scheduling | Slots at 11:00, 14:00 and 16:00, Mon–Sat. Types: `product_demo` (demo / sample review call, Google Meet) and `showroom_visit` (Indiranagar studio). Nothing checks a real calendar. |
-| Follow-up | "Execute" sets the row to `completed` and writes a log entry. **Nothing is sent**: no WhatsApp or email integration exists. |
+| Follow-up | Email follow-ups are **really sent over SMTP** (`services/email.py`); "sent" only if the server accepted it, else "not_sent" with the error. `EMAIL_TEST_MODE=true` (default) redirects every email to `EMAIL_TEST_RECIPIENT` with "[to: lead@x]" in the subject. WhatsApp follow-ups are marked "simulated". Follow-ups do not pause when a lead replies. |
 | CRM | The local SQLite tables are the CRM. There's no external CRM sync. |
 | Auth | `/auth/login` accepts **any username with no password check** and auto-creates the user. `/auth/me` returns a hardcoded user. |
 
-### Still fake or unconnected in the UI (fix these)
-- `SettingsView.tsx`: the LLM provider dropdown, API key field and "Saved successfully" message only change local React state. Nothing reaches the backend; use `backend/.env`.
-- Outreach drafts and follow-up "Execute" don't send anything (no WhatsApp/email integration).
-- Seeded leads, conversations and documents are sample data, labelled by the navbar badge "Demo mode · Celestial Wear".
+### Still simulated (each is labelled "Demo mode — simulated" in the UI)
+- Salesforce, HubSpot, Zoho, WhatsApp, Google Calendar; phone calls and speech-to-text.
+- Seeded leads, conversations and documents are sample data (navbar badge "Demo mode · Celestial Wear").
+- `GET /api/integrations` is the single source for which integrations are real; Settings shows it read-only.
 
-Removed in the retail conversion (Nov 2026): hardcoded agent invocation counts, SLA 99.9%, dashboard and analytics trend numbers, invented insight percentages, the made-up default budget for leads with none, placeholder score factors, and the industry switcher (agents never used it).
+### Honesty rules now enforced in code
+- Every activity-log row comes from `agent_run()` (`services/activity.py`) with `duration_ms` measured by `perf_counter`. Don't write `AgentActivityLog` directly.
+- Dashboard / Analytics numbers come from `/api/analytics/dashboard`, each with a formula (`formulas`). Meeting rate = distinct leads with ≥1 meeting ÷ total leads; Win rate = won ÷ total. There is no "conversion rate". The funnel covers every stage and sums to total leads (asserted).
+- No numeric fallbacks in the frontend: show 0 or a loading state, never a made-up value.
 
 ### Genuinely working
 - CRUD for leads, meetings, follow-ups and knowledge docs, all stored in SQLite.

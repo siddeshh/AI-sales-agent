@@ -7,7 +7,8 @@ from app.core.database import get_db
 from app.models.entities import Lead, Conversation, Message
 from app.schemas.schemas import ChatMessageCreate, ChatResponse, ConversationOut, MessageOut
 from app.agents.orchestrator import WorkforceOrchestrator
-from app.agents.lead_scoring_agent import LeadScoringAgent
+from app.agents.qualification_agent import LeadQualificationAgent
+from app.services.activity import agent_run
 
 router = APIRouter(prefix="/chat", tags=["AI Conversations"])
 
@@ -112,7 +113,9 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
 
     # 4. Refresh lead score based on conversation engagement
     db.flush()
-    LeadScoringAgent.apply(lead, db)
+    with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
+        LeadQualificationAgent.apply(lead, db)
+        run["description"] = f"Re-scored after customer message: {lead.lead_score}/100 ({lead.score_category})."
     lead.last_contacted = datetime.utcnow()
 
     db.commit()

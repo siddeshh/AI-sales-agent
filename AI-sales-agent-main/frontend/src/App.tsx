@@ -83,6 +83,7 @@ export function App() {
       <Sidebar
         currentView={currentView}
         onSelectView={setCurrentView}
+        leadsCount={leads.length}
       />
 
       {/* Main Content Area */}

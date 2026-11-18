@@ -252,6 +252,7 @@ class FollowUpOut(BaseModel):
     title: str
     message_content: Optional[str]
     executed_at: Optional[datetime]
+    send_error: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -283,23 +284,6 @@ class MeetingOut(BaseModel):
         from_attributes = True
 
 # --- Analytics & Insights Schemas ---
-class DashboardKPIs(BaseModel):
-    total_leads: int
-    new_leads: int
-    hot_leads: int
-    qualified_leads: int
-    meetings_scheduled: int
-    conversion_rate: float
-    pipeline_value_inr: float
-    ai_conversations_count: int
-    active_followups: int
-
-class FunnelStageMetric(BaseModel):
-    stage: str
-    count: int
-    conversion_rate_from_prev: float
-    total_value_inr: float
-
 class ObjectionMetric(BaseModel):
     objection_type: str
     count: int
@@ -324,6 +308,7 @@ class AgentActivityOut(BaseModel):
     description: str
     details: Optional[str]
     status: str
+    duration_ms: Optional[float] = None
     created_at: datetime
 
     class Config:

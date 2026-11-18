@@ -30,7 +30,7 @@ class Settings(BaseSettings):
         "Celestial Wear, a D2C apparel brand from Bengaluru. Sells tees, polos, hoodies, sweatshirts, kurtas, "
         "joggers, caps and totes online, and takes bulk/wholesale orders (boutiques, resellers, corporate gifting, "
         "college fests) with custom printing and embroidery. Meetings are product demo / sample review calls "
-        "(Google Meet) or showroom visits at the Indiranagar studio."
+        "(video call) or showroom visits at the Indiranagar studio."
     )
     
     # Knowledge base / RAG
@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: Optional[str] = None
     QDRANT_PATH: str = "./qdrant_data"
     
+    # Real email (SMTP). Test mode sends everything to EMAIL_TEST_RECIPIENT with "[to: lead@x] " in the subject.
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
+    EMAIL_TEST_MODE: bool = True
+    EMAIL_TEST_RECIPIENT: Optional[str] = None
+
     # Offline lead-scoring experiment output (ml/lead_scoring/experiment.py --out ...), shown on the Analytics page
     ML_RESULTS_DIR: str = "../ml/lead_scoring/output"
 

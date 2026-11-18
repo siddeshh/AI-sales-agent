@@ -199,25 +199,25 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
                   <span style={{ color: '#475569' }}>Budget</span>
                   <span style={{ fontWeight: 600, color: lead.budget_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.budget_qualified ? '✓ Verified' : 'Pending'}
+                    {lead.budget_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
                   <span style={{ color: '#475569' }}>Authority</span>
                   <span style={{ fontWeight: 600, color: lead.authority_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.authority_qualified ? '✓ Verified' : 'Pending'}
+                    {lead.authority_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
                   <span style={{ color: '#475569' }}>Need</span>
                   <span style={{ fontWeight: 600, color: lead.need_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.need_qualified ? '✓ Verified' : 'Pending'}
+                    {lead.need_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
                   <span style={{ color: '#475569' }}>Timeline</span>
                   <span style={{ fontWeight: 600, color: lead.timeline_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.timeline_qualified ? '✓ Verified' : 'Pending'}
+                    {lead.timeline_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
               </div>

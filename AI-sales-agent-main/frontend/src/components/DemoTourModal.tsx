@@ -16,7 +16,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 1,
       title: '1. Lead Intake',
-      agent: 'Lead Research Agent',
+      agent: 'Research Agent',
       view: 'leads',
       description: 'Sneha Kulkarni, HR Manager at Finvolve Technologies (Pune), asks on the website form for 250 hoodies with an embroidered logo for a company offsite, within 2 weeks.',
       actionLabel: 'Open Leads',
@@ -24,7 +24,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 2,
       title: '2. Buyer Profile',
-      agent: 'Lead Research Agent',
+      agent: 'Research Agent',
       view: 'leads',
       description: 'The Research agent classifies her as a corporate / institutional buyer and notes typical concerns: a hard event deadline and logo quality.',
       actionLabel: 'View Lead Profile',
@@ -32,7 +32,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 3,
       title: '3. Explainable Score',
-      agent: 'Lead Scoring Agent',
+      agent: 'Lead Qualification Agent',
       view: 'leads',
       description: 'The Scoring agent adds six factors: order value / quantity fit, timeline urgency, buyer type, engagement, source quality and BANT evidence. The score is exactly their sum.',
       actionLabel: 'View Score',
@@ -40,7 +40,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 4,
       title: '4. Factor Breakdown',
-      agent: 'Lead Scoring Agent',
+      agent: 'Lead Qualification Agent',
       view: 'leads',
       description: 'Open the lead to see each factor with its points and the reason, e.g. a large bulk order and a 14-day deadline.',
       actionLabel: 'Open Lead Details',
@@ -48,7 +48,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 5,
       title: '5. Outreach Draft',
-      agent: 'Sales Communication Agent',
+      agent: 'Communication Agent',
       view: 'leads',
       description: 'Draft a WhatsApp or email introduction with the catalogue and bulk price list. Drafts are not sent automatically.',
       actionLabel: 'Draft Outreach',
@@ -56,7 +56,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 6,
       title: '6. Customer Message',
-      agent: 'Sales Communication Agent',
+      agent: 'Communication Agent',
       view: 'conversations',
       description: 'Sneha writes: "We need around 250 hoodies with our logo embroidered for a company offsite."',
       actionLabel: 'Open Conversations',
@@ -64,7 +64,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 7,
       title: '7. Intent & Sentiment',
-      agent: 'Workforce Orchestrator',
+      agent: 'Orchestrator',
       view: 'conversations',
       description: 'The orchestrator classifies the message (intent, sentiment, objection type) with the LLM, or with keyword rules when no model is configured.',
       actionLabel: 'See Classification',
@@ -72,7 +72,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 8,
       title: '8. Product Question',
-      agent: 'Knowledge RAG Agent',
+      agent: 'Knowledge Agent',
       view: 'conversations',
       description: 'Product and price questions go to the Knowledge agent.',
       actionLabel: 'Ask a Question',
@@ -80,7 +80,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 9,
       title: '9. Semantic Search',
-      agent: 'Knowledge RAG Agent',
+      agent: 'Knowledge Agent',
       view: 'knowledge',
       description: 'MiniLM embeddings find the closest chunks in the catalogue, bulk price list, shipping policy and customisation FAQ. Try it in Knowledge Base, Test a question.',
       actionLabel: 'Test a Question',
@@ -88,7 +88,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 10,
       title: '10. Grounded Answer',
-      agent: 'Knowledge RAG Agent',
+      agent: 'Knowledge Agent',
       view: 'conversations',
       description: 'The answer quotes only the retrieved text, e.g. the French Terry Hoodie slab price and the embroidery charge, with sources. Numbers not in the sources are blocked.',
       actionLabel: 'View Answer & Sources',
@@ -96,7 +96,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 11,
       title: '11. Objection Raised',
-      agent: 'Objection Handling Agent',
+      agent: 'Objection Agent',
       view: 'conversations',
       description: 'Sneha: "The offsite is in 12 days. Your normal lead time is too long for us." This is a delivery-time objection.',
       actionLabel: 'See Objection',
@@ -104,7 +104,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 12,
       title: '12. Objection Handled',
-      agent: 'Objection Handling Agent',
+      agent: 'Objection Agent',
       view: 'conversations',
       description: 'The playbook offers express production (5-7 business days for up to 250 pieces, 12% surcharge), as stated in the shipping policy.',
       actionLabel: 'View Reply',
@@ -112,7 +112,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 13,
       title: '13. Buying Intent',
-      agent: 'Qualification Agent',
+      agent: 'Lead Qualification Agent',
       view: 'conversations',
       description: 'Sneha asks for a call. The Qualification agent re-reads the conversation and updates the BANT slots with quotes as evidence.',
       actionLabel: 'See BANT Update',
@@ -120,7 +120,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 14,
       title: '14. BANT Status',
-      agent: 'Qualification Agent',
+      agent: 'Lead Qualification Agent',
       view: 'leads',
       description: 'Budget, authority, need and timeline are each marked absent, partial or confirmed on the lead.',
       actionLabel: 'View Qualification',
@@ -138,7 +138,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
       title: '16. Meeting Booked',
       agent: 'Scheduling Agent',
       view: 'meetings',
-      description: 'A product demo / sample review call is booked on Google Meet; showroom visits go to the Indiranagar studio.',
+      description: 'A product demo / sample review call is booked as a video call (no link or calendar invite is created; Google Calendar is demo mode); showroom visits go to the Indiranagar studio.',
       actionLabel: 'Open Meetings',
     },
     {
@@ -154,7 +154,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
       title: '18. Follow-up Queued',
       agent: 'Follow-up Agent',
       view: 'followups',
-      description: 'Follow-up tasks are queued (catalogue, customisation options, sample call offer, final check-in). They are drafts, not sent messages.',
+      description: 'Follow-up tasks are queued (catalogue, customisation options, sample call offer, final check-in). Email follow-ups are sent over SMTP when you click Send email; WhatsApp ones are simulated (demo mode).',
       actionLabel: 'Open Follow-ups',
     },
     {
@@ -168,9 +168,9 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
     {
       step: 20,
       title: '20. Human Handoff',
-      agent: 'Workforce Orchestrator',
+      agent: 'Orchestrator',
       view: 'conversations',
-      description: 'If a customer asks for a manager, or the knowledge base cannot answer twice in a row, the conversation is handed to a human.',
+      description: 'If a customer asks for a manager, or the knowledge base cannot answer twice in a row, the Orchestrator hands the conversation to a human. Every agent run appears in the AI Agents activity log with its measured time.',
       actionLabel: 'Back to Conversations',
     },
   ];
@@ -187,7 +187,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
               Sales Lifecycle Walkthrough
             </div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>
-              Step {current.step} of 20 • Multi-Agent Autonomous Flow
+              Step {current.step} of 20 • Guided walkthrough
             </div>
           </div>
           <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>

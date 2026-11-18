@@ -42,7 +42,7 @@ def schedule_meeting(payload: MeetingCreate, db: Session = Depends(get_db)):
         scheduled_time=payload.scheduled_time,
         duration_minutes=payload.duration_minutes,
         location_or_link=payload.location_or_link or ("Celestial Wear Studio, Indiranagar, Bengaluru"
-                                                     if payload.meeting_type == "showroom_visit" else "Google Meet"),
+                                                     if payload.meeting_type == "showroom_visit" else "Video call (link not generated)"),
         notes=payload.notes,
         status="scheduled"
     )

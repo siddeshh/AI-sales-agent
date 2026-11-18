@@ -4,14 +4,14 @@ from app.models.entities import Lead, FollowUp
 
 class FollowUpAgent:
     """
-    Agent H: Follow-up Agent
+    Agent 8 of 10: Follow-up Agent
     Responsibilities:
     - Automated Cadence Management:
         * Day 0: Introduction with catalogue and bulk price list
         * Day 2: Customisation options (printing, embroidery, mockups)
         * Day 5: Sample review call / showroom visit offer
         * Day 10: Final check-in before long nurture
-    - Inactivity detection & automatic stop on prospect response
+    - handle_customer_response() is not wired yet: follow-ups do NOT pause automatically when a lead replies
     - Contact-later rescheduling
     """
     AGENT_NAME = "Follow-up Agent"

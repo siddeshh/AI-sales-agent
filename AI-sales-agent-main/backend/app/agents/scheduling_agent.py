@@ -4,10 +4,10 @@ from app.services.llm import chat, build_sales_system, provider_label, LLMUnavai
 
 class SchedulingAgent:
     """
-    Agent I: Scheduling Agent
+    Agent 7 of 10: Scheduling Agent
     Responsibilities:
     - Proposes slots within showroom hours (11 AM - 7 PM IST, Mon-Sat); does NOT check a real calendar yet
-    - Meeting types: product demo / sample review call (Google Meet) or showroom visit (Bengaluru studio)
+    - Meeting types: product demo / sample review call (video call) or showroom visit (Bengaluru studio)
     - Books, cancels, and reschedules appointments
     - Prepares calendar invites & location access tokens
     """
@@ -56,7 +56,7 @@ class SchedulingAgent:
 
         meeting_title = f"{type_labels.get(meeting_type, 'Sales meeting')} with {lead_name}"
         location = ("Celestial Wear Studio, Indiranagar, Bengaluru" if meeting_type == "showroom_visit"
-                    else "Google Meet")
+                    else "Video call (link not generated)")
 
         return {
             "agent_name": cls.AGENT_NAME,

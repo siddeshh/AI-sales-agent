@@ -4,10 +4,9 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 from app.core.config import settings
 
-from app.models.entities import Lead, Conversation, Message, AgentActivityLog, ObjectionRecord
+from app.models.entities import Lead, Conversation, Message, ObjectionRecord
 from app.agents.lead_research_agent import LeadResearchAgent
-from app.agents.lead_scoring_agent import LeadScoringAgent
-from app.agents.qualification_agent import QualificationAgent, update_bant_from_conversation
+from app.agents.qualification_agent import LeadQualificationAgent, update_bant_from_conversation
 from app.agents.communication_agent import SalesCommunicationAgent
 from app.agents.rag_agent import KnowledgeRAGAgent
 from app.agents.objection_agent import ObjectionHandlingAgent
@@ -15,6 +14,7 @@ from app.agents.scheduling_agent import SchedulingAgent
 from app.agents.crm_agent import CRMAgent
 from app.agents.followup_agent import FollowUpAgent
 from app.services.llm import chat, parse_json, provider_label, LLMUnavailable
+from app.services.activity import agent_run
 
 log = logging.getLogger("nova.llm")
 
@@ -45,9 +45,9 @@ class WorkforceOrchestrator:
     """
     Central Multi-Agent State Machine & Workflow Orchestrator
     
-    Coordinates the 11 specialized sales agents:
+    Routes work between the 10 agents (the orchestrator itself is not counted as an agent):
     - Analyzes incoming events and state transitions
-    - Dispatches to appropriate agent (Research, Scoring, Qualification, RAG, Objection, Scheduling, CRM)
+    - Routes to the right agent (Research, Lead Qualification, Knowledge, Objection, Scheduling, CRM)
     - Detects customer intent, sentiment, and objections
     - Enforces anti-hallucination and triggers Human Handoff when appropriate
     """
@@ -56,34 +56,23 @@ class WorkforceOrchestrator:
     def run_lead_intake_pipeline(cls, lead: Lead, db: Session) -> Dict[str, Any]:
         """
         Automated pipeline triggered upon new lead creation:
-        Lead Created -> Research Agent -> Scoring Agent -> BANT Qualification -> CRM Next Action
+        Lead Created -> Research Agent -> Lead Qualification Agent (BANT, then score) -> CRM Agent
         """
         # Step 1: Research Agent
-        research = LeadResearchAgent.research_lead(lead)
-        lead.research_summary = research["research_summary"]
-        lead.pain_points = research["pain_points"]
-        lead.buying_intent = research["buying_intent"]
+        with agent_run(db, "Research Agent", "research", lead) as run:
+            research = LeadResearchAgent.research_lead(lead)
+            lead.research_summary = research["research_summary"]
+            lead.pain_points = research["pain_points"]
+            lead.buying_intent = research["buying_intent"]
+            run["description"] = f"Profiled lead as '{research['persona_type']}' from the lead form."
 
-        cls._log_activity(db, "Lead Research Agent", "research", lead.id, lead.name,
-                          f"Generated prospect persona '{research['persona_type']}' and mapped pain points.")
-
-        # Step 2: Qualification Agent (before scoring: BANT is a score factor)
-        qual = QualificationAgent.evaluate_bant(lead)
-        lead.qualification_status = qual["qualification_status"]
-        bant_data = qual["bant_breakdown"]
-        lead.budget_qualified = bant_data["budget_qualified"]
-        lead.authority_qualified = bant_data["authority_qualified"]
-        lead.need_qualified = bant_data["need_qualified"]
-        lead.timeline_qualified = bant_data["timeline_qualified"]
-
-        cls._log_activity(db, "Qualification Agent", "qualify", lead.id, lead.name,
-                          f"BANT evaluation completed: Status '{lead.qualification_status}'. {qual['reason']}")
-
-        # Step 3: Scoring Agent
-        score_res = LeadScoringAgent.apply(lead, db)
-
-        cls._log_activity(db, "Lead Scoring Agent", "score", lead.id, lead.name,
-                          f"Computed explainable score: {lead.lead_score}/100 ({lead.score_category}). Factors: {', '.join(score_res['why_summary'][:2])}")
+        # Step 2: Lead Qualification Agent: BANT first (it is a score factor), then score
+        with agent_run(db, "Lead Qualification Agent", "qualify", lead) as run:
+            qual = LeadQualificationAgent.apply_bant_checklist(lead)
+            run["description"] = f"BANT checklist from the lead form: {lead.qualification_status}. {qual['reason']}"
+        with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
+            score_res = LeadQualificationAgent.apply(lead, db)
+            run["description"] = f"Scored {lead.lead_score}/100 ({lead.score_category})."
 
         # Step 4: CRM Agent State Update
         lead.next_best_action = "Send introduction message with catalogue and bulk price list"
@@ -178,7 +167,10 @@ class WorkforceOrchestrator:
            ready_to_buy -> Scheduling Agent, question -> RAG + LLM answer, else -> Communication Agent
         """
         history = cls._history(conversation, user_message, db)
-        cls_res, cls_provider = cls.classify(user_message, history)
+        with agent_run(db, "Orchestrator", "classify", lead) as run:
+            cls_res, cls_provider = cls.classify(user_message, history)
+            run["description"] = (f"Classified message as {cls_res.intent} / {cls_res.sentiment}"
+                                  f"{' / ' + cls_res.objection_type if cls_res.objection_type else ''} ({cls_provider}).")
         base = {
             "intent": cls_res.intent,
             "sentiment": cls_res.sentiment.title(),
@@ -189,9 +181,11 @@ class WorkforceOrchestrator:
             "rag_sources": [],
         }
 
-        if update_bant_from_conversation(lead, history) is not None:
-            cls._log_activity(db, "Qualification Agent", "qualify", lead.id, lead.name,
-                              f"BANT updated from conversation: status '{lead.qualification_status}'.")
+        with agent_run(db, "Lead Qualification Agent", "bant_update", lead) as run:
+            if update_bant_from_conversation(lead, history) is not None:
+                run["description"] = f"BANT updated from the conversation: {lead.qualification_status}."
+            else:
+                run["description"], run["status"] = "BANT not updated (no LLM available); kept previous values.", "warning"
 
         # Human handoff
         if cls_res.intent == "human_request":
@@ -202,24 +196,24 @@ class WorkforceOrchestrator:
         # Objections (incl. "not now" and opt-out)
         if cls_res.intent in ("objection", "not_now", "opt_out"):
             obj_type = cls_res.objection_type or ("no_interest" if cls_res.intent == "opt_out" else "timing")
-            chunks = cls._retrieve(user_message, db)
-            obj_res = ObjectionHandlingAgent.generate_reply(lead, obj_type, history, chunks)
-            db.add(ObjectionRecord(
-                lead_id=lead.id, conversation_id=conversation.id, objection_type=obj_type,
-                customer_statement=user_message, handled_response=obj_res["handled_response"],
-                technique_used=obj_res["technique_used"], resolution_status="Addressed"))
-            cls._log_activity(db, "Objection Handling Agent", "objection_handled", lead.id, lead.name,
-                              f"Detected '{obj_type}' objection ({obj_res['provider']}).")
+            with agent_run(db, "Objection Agent", "objection_handled", lead) as run:
+                chunks = cls._retrieve(user_message, db)
+                obj_res = ObjectionHandlingAgent.generate_reply(lead, obj_type, history, chunks)
+                db.add(ObjectionRecord(
+                    lead_id=lead.id, conversation_id=conversation.id, objection_type=obj_type,
+                    customer_statement=user_message, handled_response=obj_res["handled_response"],
+                    technique_used=obj_res["technique_used"], resolution_status="Addressed"))
+                run["description"] = f"Answered '{obj_type}' objection with '{obj_res['technique_used']}' ({obj_res['provider']})."
             lead.next_best_action = f"Follow-up with tailored proposal addressing {obj_type} concern"
             db.commit()
-            return {**base, "detected_objection": obj_type, "active_agent": "Objection Handling Agent",
+            return {**base, "detected_objection": obj_type, "active_agent": "Objection Agent",
                     "ai_reply": obj_res["handled_response"], "provider": obj_res["provider"]}
 
         # Meeting intent
         if cls_res.intent == "ready_to_buy":
-            sched = SchedulingAgent.generate_reply(lead, history)
-            cls._log_activity(db, "Scheduling Agent", "meeting_propose", lead.id, lead.name,
-                              f"Proposed meeting slots ({sched['provider']}).")
+            with agent_run(db, "Scheduling Agent", "meeting_propose", lead) as run:
+                sched = SchedulingAgent.generate_reply(lead, history)
+                run["description"] = f"Proposed {min(3, len(sched['slots']))} open slots ({sched['provider']}); nothing booked yet."
             if lead.stage in ["New", "Contacted", "Engaged"]:
                 lead.stage = "Qualified"
             lead.next_best_action = "Confirm Meeting Slot"
@@ -228,14 +222,16 @@ class WorkforceOrchestrator:
 
         # Product question -> retrieve, answer only from chunks
         if cls_res.intent == "question":
-            rag_res = KnowledgeRAGAgent.answer_question(user_message, db, lead=lead, history=history)
-            cls._log_activity(db, "Knowledge RAG Agent", "rag_search", lead.id, lead.name,
-                              f"Top similarity {rag_res['confidence']:.2f}; {len(rag_res['sources'])} chunks above threshold "
-                              f"{settings.RAG_SIMILARITY_THRESHOLD}; grounding_failed={rag_res['grounding_failed']}.")
+            with agent_run(db, "Knowledge Agent", "rag_search", lead) as run:
+                rag_res = KnowledgeRAGAgent.answer_question(user_message, db, lead=lead, history=history)
+                run["description"] = (
+                    f"Top similarity {rag_res['confidence']:.2f}; {len(rag_res['sources'])} chunks above "
+                    f"{settings.RAG_SIMILARITY_THRESHOLD}; answer by {rag_res['provider']}"
+                    + ("; grounding check failed twice, follow-up task created" if rag_res["grounding_failed"] else "") + ".")
+                if rag_res["is_unavailable"] or rag_res["grounding_failed"]:
+                    run["status"] = "warning"
             if rag_res["is_unavailable"]:
                 lead.rag_miss_streak = (lead.rag_miss_streak or 0) + 1
-                cls._log_activity(db, "Orchestrator", "warning", lead.id, lead.name,
-                                  f"No knowledge chunk passed the threshold ({lead.rag_miss_streak} in a row).", status="warning")
                 if lead.rag_miss_streak >= 2:
                     lead.rag_miss_streak = 0
                     return cls._handoff(lead, conversation, db, base,
@@ -247,13 +243,15 @@ class WorkforceOrchestrator:
             lead.stage = "Engaged" if lead.stage in ["New", "Contacted"] else lead.stage
             lead.next_best_action = "Schedule Discovery Call / Meeting"
             db.commit()
-            return {**base, "active_agent": "Knowledge RAG Agent", "ai_reply": rag_res["answer"],
+            return {**base, "active_agent": "Knowledge Agent", "ai_reply": rag_res["answer"],
                     "provider": rag_res["provider"], "rag_sources": rag_res["sources"]}
 
         # Greeting / other
-        reply = SalesCommunicationAgent.generate_reply(lead, history)
+        with agent_run(db, "Communication Agent", "reply", lead) as run:
+            reply = SalesCommunicationAgent.generate_reply(lead, history)
+            run["description"] = f"Wrote reply ({reply['provider']})."
         db.commit()
-        return {**base, "active_agent": "Sales Communication Agent", "ai_reply": reply["reply"], "provider": reply["provider"]}
+        return {**base, "active_agent": "Communication Agent", "ai_reply": reply["reply"], "provider": reply["provider"]}
 
     @staticmethod
     def _history(conversation: Conversation, user_message: str, db: Session) -> List[Dict[str, str]]:
@@ -272,27 +270,12 @@ class WorkforceOrchestrator:
     @classmethod
     def _handoff(cls, lead: Lead, conversation: Conversation, db: Session, base: Dict[str, Any],
                  reason: str, reply: str) -> Dict[str, Any]:
-        conversation.human_takeover = True
-        conversation.status = "human_takeover"
-        cls._log_activity(db, "Orchestrator", "handoff", lead.id, lead.name, f"Human handoff: {reason}.", status="handoff")
-        lead.next_best_action = "Human Sales Rep Takeover Required"
-        lead.next_best_action_reason = reason
+        with agent_run(db, "Orchestrator", "handoff", lead) as run:
+            conversation.human_takeover = True
+            conversation.status = "human_takeover"
+            lead.next_best_action = "Human Sales Rep Takeover Required"
+            lead.next_best_action_reason = reason
+            run["description"], run["status"] = f"Handed conversation to a human: {reason}.", "handoff"
         db.commit()
-        return {**base, "active_agent": "Human Handoff Sentinel", "ai_reply": reply, "provider": "rules",
+        return {**base, "active_agent": "Orchestrator", "ai_reply": reply, "provider": "rules",
                 "human_handoff_triggered": True, "handoff_reason": reason}
-
-    @classmethod
-    def _log_activity(cls, db: Session, agent_name: str, action_type: str, lead_id: int, lead_name: str, description: str, status: str = "success"):
-        try:
-            log = AgentActivityLog(
-                agent_name=agent_name,
-                action_type=action_type,
-                lead_id=lead_id,
-                lead_name=lead_name,
-                description=description,
-                status=status
-            )
-            db.add(log)
-            db.flush()
-        except Exception:
-            pass

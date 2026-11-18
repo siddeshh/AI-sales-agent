@@ -8,6 +8,7 @@ import {
 interface SidebarProps {
   currentView: string;
   onSelectView: (view: string) => void;
+  leadsCount: number;
 }
 
 interface NavItem {
@@ -22,7 +23,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView, leadsCount }) => {
   const navSections: NavSection[] = [
     {
       title: null,
@@ -33,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) =
     {
       title: 'Sales',
       items: [
-        { id: 'leads', label: 'Leads', icon: Users, badge: '3' },
+        { id: 'leads', label: 'Leads', icon: Users, badge: String(leadsCount) },
         { id: 'conversations', label: 'Conversations', icon: MessageSquare },
         { id: 'followups', label: 'Follow-ups', icon: Clock },
         { id: 'meetings', label: 'Meetings', icon: Calendar },
@@ -42,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) =
     {
       title: 'AI Workforce',
       items: [
-        { id: 'agents', label: 'AI Agents', icon: Cpu, badge: '11' },
+        { id: 'agents', label: 'AI Agents', icon: Cpu, badge: '10' },
         { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
       ],
     },
@@ -101,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) =
             Sales Workforce
           </div>
           <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Autonomous AI
+            AI sales assistant
           </div>
         </div>
       </div>
@@ -211,17 +212,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) =
               Alex Turner
             </div>
             <div style={{ fontSize: '11px', color: '#64748b' }}>
-              Sales Representative
+              Demo user (no login check)
             </div>
           </div>
         </div>
 
-        <div style={{
-          width: '7px',
-          height: '7px',
-          borderRadius: '50%',
-          background: '#16a34a',
-        }} title="System Online (11 Agents Active)" />
       </div>
     </aside>
   );

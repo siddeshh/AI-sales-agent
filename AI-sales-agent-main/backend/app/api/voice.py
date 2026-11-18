@@ -5,12 +5,13 @@ from typing import Optional, List
 import json
 
 from app.core.database import get_db
-from app.models.entities import Lead, CallSession, AgentActivityLog
+from app.models.entities import Lead, CallSession
 from app.schemas.schemas import VoiceCallInitiate, VoiceCallTurnRequest, VoiceCallOut
 from app.agents.voice_agent import VoiceSalesAgent
 from app.agents.crm_agent import CRMAgent
+from app.services.activity import agent_run
 
-router = APIRouter(prefix="/voice", tags=["AI Voice Sales Agent"])
+router = APIRouter(prefix="/voice", tags=["AI Voice Agent"])
 
 @router.post("/initiate", response_model=VoiceCallOut)
 def initiate_call(payload: VoiceCallInitiate, db: Session = Depends(get_db)):
@@ -18,32 +19,23 @@ def initiate_call(payload: VoiceCallInitiate, db: Session = Depends(get_db)):
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    call = CallSession(
-        lead_id=lead.id,
-        caller_name=lead.name,
-        phone_number=payload.phone_number or lead.phone,
-        status="in_progress",
-        duration_seconds=0,
-        live_transcript=json.dumps([
-            {"speaker": "ai", "text": VoiceSalesAgent.introduction(lead.name)}
-        ]),
-        sentiment="Neutral",
-        lead_score_after=lead.lead_score
-    )
-    db.add(call)
-    db.commit()
-    db.refresh(call)
-
-    # Activity log
-    log = AgentActivityLog(
-        agent_name="Voice Sales Agent",
-        action_type="call_start",
-        lead_id=lead.id,
-        lead_name=lead.name,
-        description=f"Browser voice session started with {lead.name} (demo mode: no phone call is placed).",
-        status="success"
-    )
-    db.add(log)
+    with agent_run(db, "Voice Agent", "voice_session_start", lead) as run:
+        call = CallSession(
+            lead_id=lead.id,
+            caller_name=lead.name,
+            phone_number=payload.phone_number or lead.phone,
+            status="in_progress",
+            duration_seconds=0,
+            live_transcript=json.dumps([
+                {"speaker": "ai", "text": VoiceSalesAgent.introduction(lead.name)}
+            ]),
+            sentiment="Neutral",
+            lead_score_after=lead.lead_score
+        )
+        db.add(call)
+        db.commit()
+        db.refresh(call)
+        run["description"] = f"Browser voice session started with {lead.name}. Demo mode: no phone call is placed."
     db.commit()
 
     return call
@@ -65,7 +57,9 @@ def process_voice_call_turn(payload: VoiceCallTurnRequest, db: Session = Depends
     transcript_list.append({"speaker": "customer", "text": payload.user_transcript})
 
     # Run Voice Agent turn
-    turn_res = VoiceSalesAgent.process_voice_turn(call.caller_name, payload.user_transcript)
+    with agent_run(db, "Voice Agent", "voice_turn", call.lead) as run:
+        turn_res = VoiceSalesAgent.process_voice_turn(call.caller_name, payload.user_transcript)
+        run["description"] = f"Voice turn answered (keyword intent: {turn_res['intent']})."
 
     # Add AI spoken reply
     transcript_list.append({"speaker": "ai", "text": turn_res["spoken_response"]})
@@ -101,7 +95,9 @@ def end_call(call_id: int, db: Session = Depends(get_db)):
         except Exception:
             pass
 
-    summary_res = VoiceSalesAgent.generate_call_summary(call.caller_name, call.duration_seconds, transcript_list)
+    with agent_run(db, "Voice Agent", "voice_summary", call.lead) as run:
+        summary_res = VoiceSalesAgent.generate_call_summary(call.caller_name, call.duration_seconds, transcript_list)
+        run["description"] = f"Session ended after {call.duration_seconds}s; summary saved to the internal CRM."
     call.summary = summary_res["summary"]
     call.action_items = summary_res["action_items"]
     call.sentiment = summary_res["sentiment"]

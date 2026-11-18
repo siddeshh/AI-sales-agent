@@ -1,3 +1,4 @@
+import { KpiCard } from '../components/KpiCard';
 import React from 'react';
 import { 
   ArrowUpRight, ArrowDownRight, RefreshCw, Calendar, 
@@ -25,9 +26,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   // Zeros until the API answers: never show made-up numbers.
   const kpis = metrics?.kpis || {
-    total_leads: 0, new_leads: 0, hot_leads: 0, qualified_leads: 0, meetings_scheduled: 0,
-    conversion_rate: 0, pipeline_value_inr: 0, ai_conversations_count: 0, active_followups: 0,
+    total_leads: 0, new_leads: 0, hot_leads: 0, bant_qualified_leads: 0, meetings_scheduled: 0, leads_with_meeting: 0,
+    won_leads: 0, meeting_rate: 0, win_rate: 0, pipeline_value_inr: 0, ai_conversations_count: 0, active_followups: 0,
   };
+  const formulas = metrics?.formulas || {};
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   const formatCurrency = (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}`;
 
@@ -39,7 +43,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Top Header Row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h2>Good morning, Alex</h2>
+          <h2>{greeting}</h2>
           <p>Sales activity overview and workforce recommendations.</p>
         </div>
 
@@ -54,66 +58,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Compact KPI Row */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        gap: '12px',
-      }}>
-        {/* KPI 1: Total Leads */}
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Total Leads</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.total_leads}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            {kpis.new_leads} new, {kpis.hot_leads} hot
-          </div>
-        </div>
-
-        {/* KPI 2: Qualified Leads */}
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Qualified Leads</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.qualified_leads}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            {pct(kpis.qualified_leads)}% of leads meet BANT
-          </div>
-        </div>
-
-        {/* KPI 3: Meetings */}
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Meetings Scheduled</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.meetings_scheduled}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Demo calls &amp; showroom visits
-          </div>
-        </div>
-
-        {/* KPI 4: Pipeline Value */}
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Pipeline Value</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {formatCurrency(kpis.pipeline_value_inr)}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Stated budgets of open leads
-          </div>
-        </div>
-
-        {/* KPI 5: Conversion Rate */}
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Conversion Rate</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.conversion_rate}%
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Meetings / leads
-          </div>
-        </div>
+      {/* KPI row: every value comes from /api/analytics/dashboard; hover ⓘ for the formula */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+        <KpiCard label="Total Leads" value={kpis.total_leads} sub={`${kpis.new_leads} new, ${kpis.hot_leads} hot (score 81+)`}
+          formula="Count of all leads in the database" />
+        <KpiCard label="BANT Qualified" value={kpis.bant_qualified_leads}
+          sub={`${pct(kpis.bant_qualified_leads)}% of leads meet all 4 BANT criteria`} formula={formulas.bant_qualified_leads} />
+        <KpiCard label="Meeting Rate" value={`${kpis.meeting_rate}%`}
+          sub={`${kpis.leads_with_meeting} of ${kpis.total_leads} leads have a meeting`} formula={formulas.meeting_rate} />
+        <KpiCard label="Win Rate" value={`${kpis.win_rate}%`}
+          sub={`${kpis.won_leads} of ${kpis.total_leads} leads won`} formula={formulas.win_rate} />
+        <KpiCard label="Open Pipeline" value={formatCurrency(kpis.pipeline_value_inr)}
+          sub="Stated budgets, excl. Won and Lost" formula={formulas.pipeline_value_inr} />
       </div>
 
       {/* Clean Sales Funnel Section */}
@@ -121,7 +77,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>Sales Pipeline Funnel</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>Conversion progression across pipeline milestones</div>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Leads in each pipeline stage (adds up to total leads)</div>
           </div>
           <button onClick={() => onNavigate('crm')} className="btn btn-ghost btn-sm" style={{ fontSize: '12px' }}>
             <span>View CRM Pipeline</span>

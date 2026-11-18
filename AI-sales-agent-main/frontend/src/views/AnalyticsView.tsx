@@ -1,6 +1,7 @@
 import React from 'react';
 import { DashboardMetrics } from '../types';
 import { ScoringModelPanel } from '../components/ScoringModelPanel';
+import { KpiCard } from '../components/KpiCard';
 
 interface AnalyticsViewProps {
   metrics: DashboardMetrics | null;
@@ -27,42 +28,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
       {/* Header */}
       <div>
         <h2>Analytics</h2>
-        <p>Conversion metrics, pipeline velocity, and objection patterns.</p>
+        <p>Meeting rate, win rate, pipeline by stage and objections, computed from the database.</p>
       </div>
 
-      {/* Metric Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b' }}>Conversion Rate</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.conversion_rate}%
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>Meetings scheduled / total leads</div>
-        </div>
-
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b' }}>Active Pipeline</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {formatCurrency(kpis.pipeline_value_inr)}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>Stated budgets of open leads</div>
-        </div>
-
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b' }}>Meetings Scheduled</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.meetings_scheduled}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>Demo calls &amp; showroom visits</div>
-        </div>
-
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b' }}>Conversations Handled</div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            {kpis.ai_conversations_count}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>Chat, WhatsApp &amp; email threads</div>
-        </div>
+      {/* Metric cards: computed by the Analytics agent from the database; hover ⓘ for the formula */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
+        <KpiCard label="Meeting Rate" value={`${kpis.meeting_rate}%`}
+          sub={`${kpis.leads_with_meeting} of ${kpis.total_leads} leads`} formula={metrics.formulas?.meeting_rate} />
+        <KpiCard label="Win Rate" value={`${kpis.win_rate}%`}
+          sub={`${kpis.won_leads} of ${kpis.total_leads} leads`} formula={metrics.formulas?.win_rate} />
+        <KpiCard label="Open Pipeline" value={formatCurrency(kpis.pipeline_value_inr)}
+          sub="Stated budgets, excl. Won and Lost" formula={metrics.formulas?.pipeline_value_inr} />
+        <KpiCard label="Conversations" value={kpis.ai_conversations_count}
+          sub="Chat threads (WhatsApp/email channels are simulated)" formula="Count of conversation threads in the database" />
       </div>
 
       {/* Funnel & Score Distribution */}
@@ -70,10 +48,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
         {/* Funnel Breakdown */}
         <div className="card">
           <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
-            Funnel Conversion Velocity
+            Pipeline by Stage
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-            Milestone progression from inbound acquisition to close
+            Leads in each stage (adds up to total leads)
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

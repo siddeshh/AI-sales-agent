@@ -8,6 +8,7 @@ from app.schemas.schemas import KnowledgeDocumentOut, KnowledgeChunkOut, RAGQuer
 from app.core.config import settings
 from app.rag.engine import DocumentChunker, index_chunks, vector_store
 from app.agents.rag_agent import KnowledgeRAGAgent
+from app.services.activity import agent_run
 
 router = APIRouter(prefix="/knowledge", tags=["RAG Knowledge Base"])
 
@@ -54,7 +55,9 @@ async def upload_document(
     chunks = [KnowledgeChunk(document_id=doc.id, chunk_index=i, content=t) for i, t in enumerate(raw_chunks)]
     db.add_all(chunks)
     db.flush()
-    index_chunks(db, chunks)
+    with agent_run(db, "Knowledge Agent", "index_document") as run:
+        index_chunks(db, chunks)
+        run["description"] = f"Embedded and indexed '{title}' ({len(chunks)} chunks)."
     db.commit()
     db.refresh(doc)
     return doc

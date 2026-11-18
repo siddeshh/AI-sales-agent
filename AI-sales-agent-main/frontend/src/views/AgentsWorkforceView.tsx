@@ -38,7 +38,7 @@ export const AgentsWorkforceView: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2>AI Agents</h2>
-          <p>Multi-agent workforce architecture, task execution metrics, and operational health.</p>
+          <p>The 10 agents. Runs and durations come from the activity log, which is written by the backend each time an agent actually runs (duration measured, in ms).</p>
         </div>
 
         <button onClick={loadData} disabled={isLoading} className="btn btn-secondary btn-sm">
@@ -61,7 +61,7 @@ export const AgentsWorkforceView: React.FC = () => {
                 <th>Agent</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Tasks Completed</th>
+                <th>Runs logged</th>
               </tr>
             </thead>
             <tbody>
@@ -83,14 +83,17 @@ export const AgentsWorkforceView: React.FC = () => {
                       <span style={{ fontSize: '12px', color: '#64748b' }}>{agent.role}</span>
                     </td>
                     <td>
-                      <span className="badge badge-green">
-                        ● {agent.status}
+                      <span className={`badge ${agent.invocations_count ? 'badge-green' : 'badge-gray'}`}>
+                        {agent.status}
                       </span>
                     </td>
                     <td>
                       <span style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>
                         {agent.invocations_count}
                       </span>
+                      {agent.avg_duration_ms != null && (
+                        <span style={{ fontSize: '11px', color: '#64748b' }}> · avg {agent.avg_duration_ms} ms</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -127,7 +130,7 @@ export const AgentsWorkforceView: React.FC = () => {
           {/* Activity Log */}
           <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px' }}>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '10px' }}>
-              Recent Execution Activity
+              Activity log (real runs, measured duration)
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto' }}>
@@ -145,10 +148,11 @@ export const AgentsWorkforceView: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                     <span style={{ fontWeight: 600, color: '#0f172a' }}>{act.agent_name}</span>
                     <span style={{ color: '#94a3b8', fontSize: '11px' }}>
-                      {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {act.duration_ms != null ? `${act.duration_ms} ms · ` : ''}
+                      {new Date(act.created_at + (act.created_at.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
-                  <div style={{ color: '#475569' }}>{act.description}</div>
+                  <div style={{ color: act.status === 'error' ? '#b91c1c' : '#475569' }}>{act.description}</div>
                 </div>
               ))}
             </div>

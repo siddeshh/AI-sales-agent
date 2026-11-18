@@ -143,11 +143,12 @@ export interface FollowUp {
   lead_name?: string;
   cadence_step: number;
   due_date: string;
-  status: 'pending' | 'completed' | 'overdue' | 'cancelled';
+  status: 'pending' | 'sent' | 'not_sent' | 'simulated';
   channel: string;
   title: string;
   message_content?: string;
   executed_at?: string;
+  send_error?: string | null;
   created_at: string;
 }
 
@@ -166,13 +167,17 @@ export interface DashboardMetrics {
     total_leads: number;
     new_leads: number;
     hot_leads: number;
-    qualified_leads: number;
+    bant_qualified_leads: number;
     meetings_scheduled: number;
-    conversion_rate: number;
+    leads_with_meeting: number;
+    won_leads: number;
+    meeting_rate: number;
+    win_rate: number;
     pipeline_value_inr: number;
     ai_conversations_count: number;
     active_followups: number;
   };
+  formulas: Record<string, string>;
   funnel: Array<{
     stage: string;
     count: number;
@@ -191,6 +196,7 @@ export interface AgentInfo {
   description: string;
   icon: string;
   invocations_count: number;
+  avg_duration_ms?: number | null;
 }
 
 export interface AgentActivity {
@@ -202,6 +208,7 @@ export interface AgentActivity {
   description: string;
   details?: string;
   status: string;
+  duration_ms?: number | null;
   created_at: string;
 }
 

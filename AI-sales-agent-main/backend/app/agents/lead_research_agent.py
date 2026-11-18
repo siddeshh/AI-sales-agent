@@ -1,17 +1,17 @@
 from typing import Dict, Any
 from app.models.entities import Lead
-from app.agents.lead_scoring_agent import timeline_days
+from app.agents.qualification_agent import timeline_days
 
 class LeadResearchAgent:
     """
-    Agent A: Lead Research Agent
+    Agent 1 of 10: Research Agent
     Responsibilities:
     - Analyze lead information (Name, Location, Budget, Requirements, Timeline, Source)
-    - Enrich company/customer context
+    - Uses only the lead form (no external enrichment)
     - Identify probable buyer pain points
     - Generate comprehensive lead persona
     """
-    AGENT_NAME = "Lead Research Agent"
+    AGENT_NAME = "Research Agent"
 
     PERSONAS = {
         "wholesale": ("Wholesale buyer (boutique / reseller)",

@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
-from app.models.entities import Lead, AgentActivityLog
+from app.models.entities import Lead
+from app.services.activity import agent_run
 
 class CRMAgent:
     """
-    Agent J: CRM Agent
+    Agent 9 of 10: CRM Agent
     Responsibilities:
     - Maintains customer 360 profile in the database
     - Transitions pipeline stages (New -> Contacted -> Engaged -> Qualified -> Meeting Scheduled -> Proposal -> Won/Lost)
@@ -31,29 +32,19 @@ class CRMAgent:
         notes: Optional[str] = None
     ) -> Dict[str, Any]:
         prev_stage = lead.stage
-        if stage and stage in cls.STAGES_ORDER:
-            lead.stage = stage
-
-        if next_action:
-            lead.next_best_action = next_action
-        if next_action_reason:
-            lead.next_best_action_reason = next_action_reason
-        if qualification_status:
-            lead.qualification_status = qualification_status
-
-        lead.updated_at = datetime.utcnow()
-
-        # Log CRM audit record
-        log = AgentActivityLog(
-            agent_name=cls.AGENT_NAME,
-            action_type="crm_sync",
-            lead_id=lead.id,
-            lead_name=lead.name,
-            description=f"CRM updated: Stage moved from '{prev_stage}' to '{lead.stage}'. Next action: '{lead.next_best_action}'",
-            details=notes or f"Qualification: {lead.qualification_status}, Score: {lead.lead_score}",
-            status="success"
-        )
-        db.add(log)
+        with agent_run(db, cls.AGENT_NAME, "crm_update", lead) as run:
+            if stage and stage in cls.STAGES_ORDER:
+                lead.stage = stage
+            if next_action:
+                lead.next_best_action = next_action
+            if next_action_reason:
+                lead.next_best_action_reason = next_action_reason
+            if qualification_status:
+                lead.qualification_status = qualification_status
+            lead.updated_at = datetime.utcnow()
+            run["description"] = (f"Internal CRM (this app's database) updated: stage '{prev_stage}' -> '{lead.stage}'. "
+                                  f"Next action: '{lead.next_best_action}'")
+            run["details"] = notes
         db.commit()
         db.refresh(lead)
 

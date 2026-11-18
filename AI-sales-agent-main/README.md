@@ -11,17 +11,28 @@ Nova is an AI that does a junior salesperson's job for a small retail or e-comme
 | # | Agent | What it does |
 |---|---|---|
 | 1 | **Research** | Builds a buyer profile (wholesale / corporate / individual) from the lead form. |
-| 2 | **Lead Qualification** | Explainable 0–100 score from six factors: order value / quantity fit, timeline urgency, buyer type, engagement, source quality and BANT evidence. Also runs the BANT check (Budget, Authority, Need, Timeline), re-read from the conversation by the LLM after every message. |
+| 2 | **Lead Qualification** | Scoring and BANT in one agent. Score = round(0.7 × profile base) + BANT bonus, with the factor breakdown on the lead page. BANT (Budget, Authority, Need, Timeline) is checked from the lead form at intake and re-read from the conversation by the LLM after every message. |
 | 3 | **Communication** | Writes chat, WhatsApp and email replies and drafts. |
 | 4 | **Knowledge (RAG)** | Searches the catalogue, bulk price list, shipping/returns policy and customisation FAQ (MiniLM embeddings). Answers only from the retrieved text, and a number check blocks invented prices or dates. |
 | 5 | **Objection** | Price → volume-slab pricing and value; minimum order → smaller trial order; delivery time → express production; competitor → quality, customisation and returns policy. |
 | 6 | **Voice** | Browser voice session that introduces itself as Celestial Wear's AI assistant. Uses browser text-to-speech; there is no speech-to-text or telephony yet. |
 | 7 | **Scheduling** | Proposes slots in showroom hours and books product demo / sample review calls or showroom visits. No external calendar yet. |
-| 8 | **Follow-up** | Day 0 / 2 / 5 / 10 cadence (catalogue, customisation, sample call offer, final check-in). Messages are drafted, not sent. |
-| 9 | **CRM** | Moves leads through pipeline stages, sets the next best action and logs every agent action. |
+| 8 | **Follow-up** | Day 0 / 2 / 5 / 10 tasks. **Email follow-ups are really sent over SMTP** (test mode by default); WhatsApp follow-ups are simulated. A person clicks to send. |
+| 9 | **CRM** | Internal CRM (this app's database): moves leads through pipeline stages and sets the next best action. No external CRM sync. |
 | 10 | **Analytics** | Funnel, score tiers, objection breakdown and insights, all computed from the database. |
 
 The orchestrator classifies each customer message (intent, sentiment, objection type) and routes it to the right agent. It hands the conversation to a human when the customer asks for one, or when the knowledge base can't answer two questions in a row.
+
+## Real vs simulated
+
+| Real | Demo mode — simulated |
+|---|---|
+| Internal CRM (this app's database) | Salesforce, HubSpot, Zoho |
+| Email via SMTP (`EMAIL_TEST_MODE=true` sends everything to your test address) | WhatsApp |
+| LLM replies when a key is set (Groq / OpenAI / Ollama); rule-based templates otherwise | Google Calendar (no invites or video links) |
+| Semantic search with MiniLM embeddings | Phone calls and speech-to-text |
+
+Every agent run writes one activity-log row with its **measured** duration in ms (AI Agents page). Dashboard numbers are computed from the database, and each shows its formula on hover: **Meeting rate** = distinct leads with ≥1 meeting ÷ total leads; **Win rate** = won leads ÷ total leads.
 
 ## Demo walkthrough
 

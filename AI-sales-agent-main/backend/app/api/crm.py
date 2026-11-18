@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.entities import Lead, AgentActivityLog
+from app.models.entities import Lead
 from app.agents.crm_agent import CRMAgent
 from app.schemas.schemas import LeadOut
 
@@ -17,10 +17,7 @@ class MoveStageRequest(BaseModel):
 
 @router.get("/pipeline")
 def get_crm_pipeline(db: Session = Depends(get_db)):
-    stages = [
-        "New", "Contacted", "Engaged", "Qualified", "Meeting Scheduled", 
-        "Proposal", "Negotiation", "Won", "Lost"
-    ]
+    stages = CRMAgent.STAGES_ORDER  # every stage, so no lead is left off the board
     leads = db.query(Lead).all()
 
     pipeline: Dict[str, Any] = {}
@@ -36,7 +33,8 @@ def get_crm_pipeline(db: Session = Depends(get_db)):
     return {
         "stages": stages,
         "pipeline": pipeline,
-        "total_active_pipeline_value": sum(pipeline[s]["total_value_inr"] for s in stages if s not in ["Lost"])
+        # same definition as the dashboard's "Open pipeline": stated budgets of leads not Won or Lost
+        "total_active_pipeline_value": sum(pipeline[s]["total_value_inr"] for s in stages if s not in ("Won", "Lost"))
     }
 
 @router.post("/move-stage")

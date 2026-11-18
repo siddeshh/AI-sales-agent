@@ -44,11 +44,7 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
     }
   };
 
-  const formatCurrency = (val: number) => {
-    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
-    if (val >= 100000) return `₹${(val / 100000).toFixed(1)} L`;
-    return `₹${val.toLocaleString()}`;
-  };
+  const formatCurrency = (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}`;
 
   const STAGES_LIST = [
     'New', 'Contacted', 'Engaged', 'Qualified', 'Meeting Scheduled', 
@@ -62,11 +58,17 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
         <div>
           <h2>CRM Pipeline</h2>
           <p>
-            Total active pipeline value:{' '}
+            Open pipeline (stated budgets, excl. Won and Lost):{' '}
             <strong style={{ color: '#0f172a' }}>
-              {formatCurrency(pipelineData?.total_active_pipeline_value || 25500000)}
+              {formatCurrency(pipelineData?.total_active_pipeline_value ?? 0)}
             </strong>
           </p>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+            <span className="badge badge-green">Internal CRM — real (this app's database)</span>
+            <span className="badge badge-amber" title="Not connected: nothing is synced to these systems">
+              Salesforce / HubSpot / Zoho — Demo mode — simulated
+            </span>
+          </div>
         </div>
 
         <button onClick={loadPipeline} disabled={isLoading} className="btn btn-secondary btn-sm">

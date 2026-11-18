@@ -17,7 +17,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
   const [selectedLeadId, setSelectedLeadId] = useState<number>(leads[0]?.id || 1);
   const [meetingType, setMeetingType] = useState('product_demo');
   const [selectedSlotIso, setSelectedSlotIso] = useState('');
-  const [meetingLocation, setMeetingLocation] = useState('Google Meet');
+  const [meetingLocation, setMeetingLocation] = useState('Video call (link not generated)');
   const [meetingNotes, setMeetingNotes] = useState('');
   const [isBooking, setIsBooking] = useState(false);
 
@@ -75,7 +75,10 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2>Meetings &amp; Appointments</h2>
-          <p>Product demo / sample review calls and showroom visits. Slots follow showroom hours; no external calendar is connected.</p>
+          <p>Product demo / sample review calls and showroom visits. Slots follow showroom hours; meetings are stored in this app only.</p>
+          <span className="badge badge-amber" style={{ marginTop: '6px', display: 'inline-block' }}>
+            Google Calendar — Demo mode — simulated (no invite or video link is created)
+          </span>
         </div>
 
         <button onClick={() => setIsBookModalOpen(true)} className="btn btn-primary btn-sm">
@@ -222,7 +225,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
                     value={meetingType}
                     onChange={(e) => {
                       setMeetingType(e.target.value);
-                      setMeetingLocation(e.target.value === 'showroom_visit' ? 'Celestial Wear Studio, Indiranagar, Bengaluru' : 'Google Meet');
+                      setMeetingLocation(e.target.value === 'showroom_visit' ? 'Celestial Wear Studio, Indiranagar, Bengaluru' : 'Video call (link not generated)');
                     }}
                     className="form-select"
                   >

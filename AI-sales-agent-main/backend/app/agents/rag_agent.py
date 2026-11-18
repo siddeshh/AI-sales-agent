@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.entities import FollowUp, AgentActivityLog
+from app.models.entities import FollowUp
 from app.rag.engine import RAGEngine, ungrounded_numbers
 from app.services.llm import chat, build_sales_system, provider_label, LLMUnavailable
 
@@ -17,13 +17,13 @@ CHECK_BACK = "I don't have that in our documents yet. Let me check with the team
 
 class KnowledgeRAGAgent:
     """
-    Agent E: Knowledge / RAG Agent
+    Agent 4 of 10: Knowledge Agent
     - Semantic retrieval (all-MiniLM-L6-v2, cosine, top-k, threshold)
     - LLM answer restricted to the retrieved chunks, with source list
     - Grounding check: every number in the answer must appear in the sources (or the customer's question);
       regenerate once, then fall back to "I'll check and get back" + a follow-up task
     """
-    AGENT_NAME = "Knowledge RAG Agent"
+    AGENT_NAME = "Knowledge Agent"
 
     @staticmethod
     def retrieve(query: str, db: Session) -> Dict[str, Any]:
@@ -83,5 +83,3 @@ class KnowledgeRAGAgent:
             lead_id=lead.id, cadence_step=0, due_date=datetime.utcnow() + timedelta(days=1), status="pending",
             channel="chat", title="Answer pending product question",
             message_content=f"Customer asked: \"{query}\". The AI answer failed the grounding check; confirm the facts and reply."))
-        db.add(AgentActivityLog(agent_name=cls.AGENT_NAME, action_type="follow_up", lead_id=lead.id, lead_name=lead.name,
-                                description="Answer failed grounding check twice; follow-up task created.", status="warning"))

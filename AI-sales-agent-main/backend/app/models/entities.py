@@ -109,7 +109,7 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
     sender = Column(String(20), nullable=False) # customer, ai_agent, human_rep
-    agent_name = Column(String(50), default="Sales Communication Agent")
+    agent_name = Column(String(50), default="Communication Agent")
     content = Column(Text, nullable=False)
     intent = Column(String(50), nullable=True)
     sentiment = Column(String(30), nullable=True)
@@ -173,7 +173,8 @@ class FollowUp(Base):
     lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False)
     cadence_step = Column(Integer, default=0) # 0, 2, 5, 10
     due_date = Column(DateTime, nullable=False)
-    status = Column(String(20), default="pending") # pending, completed, overdue, cancelled
+    status = Column(String(20), default="pending") # pending, sent (SMTP accepted), not_sent (error), simulated (demo channel)
+    send_error = Column(Text, nullable=True)  # SMTP error when status is not_sent
     channel = Column(String(20), default="whatsapp") # whatsapp, email, sms
     title = Column(String(100), default="Automated Follow-up")
     message_content = Column(Text, nullable=True)
@@ -192,7 +193,7 @@ class Meeting(Base):
     scheduled_time = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, default=45)
     status = Column(String(30), default="scheduled") # scheduled, completed, cancelled, rescheduled
-    location_or_link = Column(String(200), default="Google Meet")
+    location_or_link = Column(String(200), default="Video call (link not generated)")
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -224,4 +225,5 @@ class AgentActivityLog(Base):
     description = Column(Text, nullable=False)
     details = Column(Text, nullable=True)
     status = Column(String(20), default="success") # success, warning, error, handoff
+    duration_ms = Column(Float, nullable=True)  # measured with time.perf_counter around the agent run
     created_at = Column(DateTime, default=datetime.utcnow)

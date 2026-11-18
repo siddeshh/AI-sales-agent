@@ -3,15 +3,14 @@ from datetime import datetime
 
 class VoiceSalesAgent:
     """
-    Agent G: Voice Sales Agent
+    Agent 6 of 10: Voice Agent
     Responsibilities:
-    - Voice interaction simulation and real audio stream handling
-    - Speech-to-Text parsing & speaker turn management
-    - Real-time conversational response synthesis
+    - Browser voice session: the customer's lines are typed or picked (no speech-to-text, no audio stream)
+    - Keyword intents and fixed spoken replies (browser text-to-speech in the frontend)
     - Text-to-Speech generation metadata
-    - Call summary, customer sentiment tracking, and CRM post-call sync
+    - Call summary from the transcript, saved to the internal CRM
     """
-    AGENT_NAME = "Voice Sales Agent"
+    AGENT_NAME = "Voice Agent"
 
     @classmethod
     def process_voice_turn(cls, caller_name: str, transcript: str, call_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
@@ -52,7 +51,7 @@ class VoiceSalesAgent:
         elif any(w in t_lower for w in ["demo", "sample", "showroom", "visit", "meet", "call"]):
             intent, sentiment = "Meeting Booking", "Positive"
             spoken_response = (
-                "Happy to set that up. We can do a sample review call on Google Meet, or you can visit our showroom "
+                "Happy to set that up. We can do a sample review video call, or you can visit our showroom "
                 "in Indiranagar, Bengaluru. Which would you prefer, and what day suits you?"
             )
         elif any(w in t_lower for w in ["yes", "confirm", "works", "okay", "ok"]):
@@ -92,5 +91,5 @@ class VoiceSalesAgent:
             "summary": summary,
             "sentiment": "Neutral",
             "action_items": "Review the transcript and send the quote or meeting confirmation.",
-            "lead_score_boost": 0,  # scoring now comes from LeadScoringAgent, not a fixed bonus
+            "lead_score_boost": 0,  # scoring now comes from LeadQualificationAgent, not a fixed bonus
         }

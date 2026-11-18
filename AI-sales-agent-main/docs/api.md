@@ -10,7 +10,7 @@ The backend provides a modular RESTful API built on **FastAPI**. Interactive Swa
 - `GET /api/leads/{id}`: Detailed 360° lead dossier with score factors and conversations.
 - `PUT /api/leads/{id}`: Update lead fields.
 - `DELETE /api/leads/{id}`: Delete lead and cascading records.
-- `POST /api/leads/{id}/research`: Manually trigger Lead Research Agent.
+- `POST /api/leads/{id}/research`: Manually trigger Research Agent.
 - `POST /api/leads/{id}/score`: Re-calculate explainable score and factor impacts.
 - `POST /api/leads/{id}/qualify`: Evaluate BANT matrix criteria.
 - `POST /api/leads/{id}/outreach`: Generate WhatsApp or Email pitch.
@@ -37,14 +37,15 @@ The backend provides a modular RESTful API built on **FastAPI**. Interactive Swa
 - `POST /api/meetings`: Schedule appointment and auto-advance pipeline stage.
 
 ## 6. Follow-up Cadence (`/api/followups`)
-- `GET /api/followups`: List pending, completed, or overdue follow-ups.
-- `POST /api/followups/execute/{id}`: Execute scheduled touchpoint.
+- `GET /api/followups`: List follow-ups (status: pending, sent, not_sent with `send_error`, simulated).
+- `POST /api/followups/execute/{id}`: Email: send over SMTP ("sent" only if the server accepted it, else "not_sent" + error). Other channels: marked "simulated", nothing is sent.
 
 ## 7. CRM Pipeline (`/api/crm`)
 - `GET /api/crm/pipeline`: Kanban board state with deal value rollups across 9 stages.
 - `POST /api/crm/move-stage`: Move lead to new stage with audit tracking.
 
 ## 8. Analytics & Workforce (`/api/analytics`, `/api/agents`)
-- `GET /api/analytics/dashboard`: Top-level KPIs, funnel stages, score distribution, and AI Sales Insights.
-- `GET /api/agents/status`: Operational health and invocation metrics for all 11 agents.
-- `GET /api/agents/activities`: Real-time auditable agent activity stream.
+- `GET /api/analytics/dashboard`: KPIs computed from the database (meeting rate, win rate, open pipeline, ...) with a `formulas` object, the funnel over all stages (sums to total leads), score tiers, objection breakdown and data-derived insights.
+- `GET /api/agents/status`: The 10 agents with run counts and average measured duration from the activity log.
+- `GET /api/agents/activities`: Latest activity-log rows (one per real agent run, with `duration_ms`).
+- `GET /api/integrations`: Which integrations are real (LLM, email via SMTP, internal CRM) and which are simulated.

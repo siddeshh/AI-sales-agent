@@ -6,12 +6,12 @@ from app.services.llm import chat, build_sales_system, provider_label, LLMUnavai
 
 class ObjectionHandlingAgent:
     """
-    Agent F: Objection Handling Agent (retail / bulk apparel playbook)
+    Agent 5 of 10: Objection Agent (retail / bulk apparel playbook)
     - Detects objections: price, moq, delivery, competitor, authority, timing, no_interest, send_details
     - Answers with the playbook below: LLM-written and grounded in the knowledge chunks when a model is configured,
       otherwise the fixed template (whose facts match the seeded price list and policies)
     """
-    AGENT_NAME = "Objection Handling Agent"
+    AGENT_NAME = "Objection Agent"
 
     # Keys are the same labels the LLM classifier returns (orchestrator.IntentResult.objection_type).
     OBJECTION_PATTERNS = {

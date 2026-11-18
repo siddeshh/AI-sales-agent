@@ -202,6 +202,12 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
             <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>
               via {channel.toUpperCase()}
             </span>
+            {channel !== 'chat' && (
+              <span className="badge badge-amber" style={{ marginLeft: '8px' }}
+                title={`No ${channel} integration: messages here are stored in this app only and are not sent by ${channel}.`}>
+                Demo mode — simulated
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -267,7 +273,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                   }}
                 >
                   <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>
-                    {isUser ? selectedLead?.name : isHumanRep ? 'Alex Turner (Rep)' : m.agent_name || 'Sales Assistant'}
+                    {isUser ? selectedLead?.name : isHumanRep ? 'Human rep' : m.agent_name || 'Sales Assistant'}
                   </div>
 
                   <div style={{
@@ -382,12 +388,12 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
         {/* NLP Indicators */}
         <div>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-            Live Intent &amp; Sentiment
+            Last message: intent &amp; sentiment
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
               <span style={{ color: '#64748b' }}>Intent</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{conversation?.current_intent || 'Discovery'}</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>{conversation?.current_intent || '—'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
               <span style={{ color: '#64748b' }}>Sentiment</span>

@@ -6,98 +6,42 @@ from typing import List
 from app.core.database import get_db
 from app.models.entities import AgentActivityLog
 from app.schemas.schemas import AgentActivityOut
+from app.services.activity import AGENTS
 
-router = APIRouter(prefix="/agents", tags=["Multi-Agent Workforce Management"])
+router = APIRouter(prefix="/agents", tags=["Agents"])
 
-AGENT_ROSTER = [
-    {
-        "id": "agent-research",
-        "name": "Lead Research Agent",
-        "role": "Prospect Profiling & Enrichment",
-                "description": "Analyzes lead context, identifies buyer personas, and surfaces core pain points.",
-        "icon": "Search"
-    },
-    {
-        "id": "agent-scoring",
-        "name": "Lead Scoring Agent",
-        "role": "Explainable Predictive Scoring",
-                "description": "Calculates 0-100 conversion probability with transparent factor breakdown.",
-        "icon": "Target"
-    },
-    {
-        "id": "agent-qualification",
-        "name": "Qualification Agent",
-        "role": "BANT Criteria Evaluation",
-                "description": "Enforces Budget, Authority, Need, and Timeline verification before sales rep handoff.",
-        "icon": "CheckCircle2"
-    },
-    {
-        "id": "agent-communication",
-        "name": "Sales Communication Agent",
-        "role": "Omnichannel Outreach & Messaging",
-                "description": "Drafts hyper-personalized WhatsApp messages, emails, and direct chat inquiries.",
-        "icon": "MessageSquare"
-    },
-    {
-        "id": "agent-rag",
-        "name": "Knowledge RAG Agent",
-        "role": "Grounded Knowledge Retrieval",
-                "description": "Extracts facts from brochures, pricing sheets, and FAQs with zero hallucination guarantee.",
-        "icon": "BookOpen"
-    },
-    {
-        "id": "agent-objection",
-        "name": "Objection Handling Agent",
-        "role": "Objection Resolution Specialist",
-                "description": "Detects price, timing, and competitor objections and deploys tested reframing methods.",
-        "icon": "ShieldAlert"
-    },
-    {
-        "id": "agent-voice",
-        "name": "Voice Sales Agent",
-        "role": "Conversational Telephony & STT/TTS",
-                "description": "Executes oral discovery phone calls, streams live transcripts, and drafts post-call notes.",
-        "icon": "PhoneCall"
-    },
-    {
-        "id": "agent-followup",
-        "name": "Follow-up Agent",
-        "role": "Cadence Automation & Nurturing",
-                "description": "Executes Day 0, 2, 5, 10 touches and automatically pauses upon customer reply.",
-        "icon": "Clock"
-    },
-    {
-        "id": "agent-scheduling",
-        "name": "Scheduling Agent",
-        "role": "Demo Call & Showroom Visit Booking",
-                "description": "Proposes slots in showroom hours and books sample review calls and showroom visits (no external calendar yet).",
-        "icon": "Calendar"
-    },
-    {
-        "id": "agent-crm",
-        "name": "CRM Agent",
-        "role": "Pipeline State Synchronization",
-                "description": "Synchronizes stages, updates Next Best Action, and logs audit events.",
-        "icon": "Layers"
-    },
-    {
-        "id": "agent-analytics",
-        "name": "Analytics Agent",
-        "role": "Sales Intelligence & Funnel Optimization",
-                "description": "Detects conversion bottlenecks, monitors objection trends, and surfaces executive insights.",
-        "icon": "TrendingUp"
-    }
-]
+# One entry per agent in app.services.activity.AGENTS. Descriptions state only what the code does.
+AGENT_INFO = {
+    "Research Agent": ("Buyer profiling", "Builds a buyer profile (wholesale / corporate / individual) from the lead form. No external lookup.", "Search"),
+    "Lead Qualification Agent": ("Score + BANT", "Explainable 0-100 score (profile base + BANT bonus) and BANT: form checklist at intake, re-read from the conversation by the LLM.", "Target"),
+    "Communication Agent": ("Replies and drafts", "Writes chat replies (LLM, or template without a key) and outreach drafts. Drafts are not sent.", "MessageSquare"),
+    "Knowledge Agent": ("Document Q&A (RAG)", "Answers from retrieved knowledge chunks (MiniLM embeddings); a check blocks numbers that are not in the sources.", "BookOpen"),
+    "Objection Agent": ("Objection playbook", "Handles price, minimum order, delivery, competitor and other objections with the retail playbook.", "ShieldAlert"),
+    "Voice Agent": ("Browser voice session", "Browser text-to-speech with keyword intents. No phone calls, no speech-to-text.", "PhoneCall"),
+    "Scheduling Agent": ("Meeting slots", "Proposes slots in showroom hours and books meetings in this app's database. No external calendar.", "Calendar"),
+    "Follow-up Agent": ("Follow-up cadence", "Day 0/2/5/10 tasks. Email follow-ups are sent over SMTP; WhatsApp follow-ups are simulated (demo mode).", "Clock"),
+    "CRM Agent": ("Internal CRM", "Updates stages and next actions in this app's own database (the internal CRM). No external CRM.", "Layers"),
+    "Analytics Agent": ("Metrics", "Computes funnel, meeting rate, win rate, score tiers and objection breakdown from the database.", "TrendingUp"),
+}
+assert set(AGENT_INFO) == set(AGENTS)
+
 
 @router.get("/status")
 def get_agents_status(db: Session = Depends(get_db)):
-    """invocations_count = rows this agent wrote to the activity log; status is 'Active' once it has run."""
-    counts = dict(db.query(AgentActivityLog.agent_name, func.count(AgentActivityLog.id))
-                  .group_by(AgentActivityLog.agent_name).all())
-    agents = [{**a, "invocations_count": counts.get(a["name"], 0),
-               "status": "Active" if counts.get(a["name"]) else "Idle"} for a in AGENT_ROSTER]
+    """invocations_count = activity-log rows written by this agent; avg_duration_ms = mean measured duration."""
+    stats = {name: (n, avg) for name, n, avg in db.query(
+        AgentActivityLog.agent_name, func.count(AgentActivityLog.id), func.avg(AgentActivityLog.duration_ms)
+    ).group_by(AgentActivityLog.agent_name).all()}
+    agents = []
+    for i, name in enumerate(AGENTS, 1):
+        role, desc, icon = AGENT_INFO[name]
+        n, avg = stats.get(name, (0, None))
+        agents.append({"id": f"agent-{i}", "name": name, "role": role, "description": desc, "icon": icon,
+                       "invocations_count": n, "avg_duration_ms": round(avg, 1) if avg is not None else None,
+                       "status": "Has run" if n else "Not run yet"})
     return {"total_workforce_agents": len(agents), "agents": agents}
+
 
 @router.get("/activities", response_model=List[AgentActivityOut])
 def get_activity_stream(limit: int = 50, db: Session = Depends(get_db)):
-    return db.query(AgentActivityLog).order_by(AgentActivityLog.created_at.desc()).limit(limit).all()
+    return db.query(AgentActivityLog).order_by(AgentActivityLog.created_at.desc(), AgentActivityLog.id.desc()).limit(limit).all()
