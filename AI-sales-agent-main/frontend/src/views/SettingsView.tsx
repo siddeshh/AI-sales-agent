@@ -38,20 +38,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Integrations: status comes from GET /api/integrations, nothing is configured from the browser */}
       <div className="card">
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
           Integrations
         </div>
-        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--muted-foreground)', marginBottom: '14px' }}>
           What is really connected. Keys and SMTP settings live in <code>backend/.env</code> (restart the backend after changing them).
         </p>
-        {error && <div style={{ fontSize: '12px', color: '#b91c1c' }}>{error}</div>}
+        {error && <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {integrations.map((i) => (
             <div key={i.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start',
-              padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+              padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '6px' }}>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{i.name}</div>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>{i.detail}</div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>{i.name}</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>{i.detail}</div>
               </div>
               <span className={`badge ${i.kind === 'real' ? (i.configured ? 'badge-green' : 'badge-red') : 'badge-amber'}`}
                 style={{ whiteSpace: 'nowrap' }}>
@@ -64,10 +64,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Database State */}
       <div className="card">
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
           Demo Data State
         </div>
-        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--muted-foreground)', marginBottom: '14px' }}>
           Delete all data and reload the Celestial Wear demo seed: 12 retail leads, 4 knowledge documents, 5 conversations, 3 meetings and follow-ups.
         </p>
 

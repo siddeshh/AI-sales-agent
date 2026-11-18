@@ -69,7 +69,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Open http://localhost:5173. API docs: http://127.0.0.1:8000/docs.
+Open http://localhost:5173: `/` is the project landing page, `/app` the dashboard. API docs: http://127.0.0.1:8000/docs.
 
 To use a real model, copy `.env.example` to `backend\.env` and set `GROQ_API_KEY`. Without a key the agents use their rule-based templates, and each message records `provider="rules"`.
 

@@ -116,6 +116,7 @@ class Message(Base):
     detected_objection = Column(String(50), nullable=True)
     confidence = Column(Float, nullable=True)  # model's own classification confidence; None for rule-based turns
     provider = Column(String(60), nullable=True)  # "groq/llama-3.3-70b-versatile", "rules", ...
+    sources_json = Column(Text, nullable=True)  # knowledge sources used for this answer: [{title, chunk_id, score, ...}]
     created_at = Column(DateTime, default=datetime.utcnow)
 
     conversation = relationship("Conversation", back_populates="messages")

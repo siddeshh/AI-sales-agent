@@ -11,6 +11,6 @@ router = APIRouter(prefix="/analytics", tags=["Sales Analytics & AI Insights"])
 def get_dashboard_analytics(db: Session = Depends(get_db)):
     with agent_run(db, "Analytics Agent", "dashboard_metrics") as run:
         metrics = AnalyticsAgent.generate_dashboard_metrics(db)
-        run["description"] = f"Computed dashboard metrics from {metrics['kpis']['total_leads']} leads."
+        run["description"] = f"Computed the dashboard numbers from {metrics['kpis']['total_leads']} leads."
     db.commit()
     return metrics

@@ -114,7 +114,7 @@ def trigger_lead_research(lead_id: int, db: Session = Depends(get_db)):
         lead.research_summary = res["research_summary"]
         lead.pain_points = res["pain_points"]
         lead.buying_intent = res["buying_intent"]
-        run["description"] = f"Re-profiled on request as '{res['persona_type']}'."
+        run["description"] = f"Re-profiled {lead.name}: {res['persona_type'].lower()}."
     db.commit()
     return res
 
@@ -126,7 +126,7 @@ def trigger_lead_score(lead_id: int, db: Session = Depends(get_db)):
 
     with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
         res = LeadQualificationAgent.apply(lead, db)
-        run["description"] = f"Re-scored on request: {lead.lead_score}/100 ({lead.score_category})."
+        run["description"] = f"Re-scored {lead.name}: {lead.lead_score}/100 ({lead.score_category})."
     db.commit()
     db.refresh(lead)
     return res
@@ -139,7 +139,7 @@ def trigger_lead_qualification(lead_id: int, db: Session = Depends(get_db)):
 
     with agent_run(db, "Lead Qualification Agent", "qualify", lead) as run:
         res = LeadQualificationAgent.apply_bant_checklist(lead)
-        run["description"] = f"BANT checklist re-run on request: {lead.qualification_status}."
+        run["description"] = f"Re-checked {lead.name}'s BANT from the lead form: {lead.qualification_status.lower()}."
     db.commit()
     return res
 
@@ -151,6 +151,6 @@ def generate_lead_outreach(lead_id: int, channel: str = "whatsapp", db: Session 
 
     with agent_run(db, "Communication Agent", "outreach_draft", lead) as run:
         draft = SalesCommunicationAgent.generate_outreach(lead, channel=channel)
-        run["description"] = f"Drafted a {channel} message (template, not sent)."
+        run["description"] = f"Drafted a {channel} message for {lead.name} (not sent)."
     db.commit()
     return draft

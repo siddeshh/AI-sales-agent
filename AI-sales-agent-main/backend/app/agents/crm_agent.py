@@ -42,8 +42,8 @@ class CRMAgent:
             if qualification_status:
                 lead.qualification_status = qualification_status
             lead.updated_at = datetime.utcnow()
-            run["description"] = (f"Internal CRM (this app's database) updated: stage '{prev_stage}' -> '{lead.stage}'. "
-                                  f"Next action: '{lead.next_best_action}'")
+            run["description"] = (f"Moved {lead.name} from {prev_stage} to {lead.stage}." if prev_stage != lead.stage
+                                  else f"Updated {lead.name}'s next step: {lead.next_best_action}.")
             run["details"] = notes
         db.commit()
         db.refresh(lead)

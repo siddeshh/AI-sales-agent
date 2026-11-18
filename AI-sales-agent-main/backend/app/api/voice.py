@@ -35,7 +35,7 @@ def initiate_call(payload: VoiceCallInitiate, db: Session = Depends(get_db)):
         db.add(call)
         db.commit()
         db.refresh(call)
-        run["description"] = f"Browser voice session started with {lead.name}. Demo mode: no phone call is placed."
+        run["description"] = f"Started a browser voice session with {lead.name} (no phone call is placed)."
     db.commit()
 
     return call
@@ -59,7 +59,7 @@ def process_voice_call_turn(payload: VoiceCallTurnRequest, db: Session = Depends
     # Run Voice Agent turn
     with agent_run(db, "Voice Agent", "voice_turn", call.lead) as run:
         turn_res = VoiceSalesAgent.process_voice_turn(call.caller_name, payload.user_transcript)
-        run["description"] = f"Voice turn answered (keyword intent: {turn_res['intent']})."
+        run["description"] = f"Answered {call.caller_name.split()[0]} in the voice session ({turn_res['intent'].lower()})."
 
     # Add AI spoken reply
     transcript_list.append({"speaker": "ai", "text": turn_res["spoken_response"]})
@@ -97,7 +97,7 @@ def end_call(call_id: int, db: Session = Depends(get_db)):
 
     with agent_run(db, "Voice Agent", "voice_summary", call.lead) as run:
         summary_res = VoiceSalesAgent.generate_call_summary(call.caller_name, call.duration_seconds, transcript_list)
-        run["description"] = f"Session ended after {call.duration_seconds}s; summary saved to the internal CRM."
+        run["description"] = f"Saved the voice session summary for {call.caller_name} ({call.duration_seconds}s)."
     call.summary = summary_res["summary"]
     call.action_items = summary_res["action_items"]
     call.sentiment = summary_res["sentiment"]

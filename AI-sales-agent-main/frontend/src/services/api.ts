@@ -211,6 +211,14 @@ export const api = {
     return request('/integrations');
   },
 
+  async getDashboardOverview(): Promise<any> {
+    return request('/dashboard/overview');
+  },
+
+  async getLeadTimeline(leadId: number): Promise<any[]> {
+    return request(`/leads/${leadId}/timeline`);
+  },
+
   // Demo Controls
   async resetDemoData(): Promise<any> {
     return request('/demo/reset', { method: 'POST' });

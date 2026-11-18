@@ -121,6 +121,14 @@ Known limits:
 - Browser TTS.
 - Demo reset (`/demo/reset`). This drops and reseeds every table.
 
+## 5b. Frontend structure and design system
+
+- Routes (`frontend/src/main.tsx`): `/` landing page (`views/LandingPage.tsx`), `/app/<page>` the app (`App.tsx` reads the page from the URL).
+- Design: the v0 "AI Landing Page" template lives in `design/v0-template/` (reference only, not built). Tokens are in `design/DESIGN_TOKENS.md` and implemented in `frontend/src/index.css` (Tailwind v4 + shadcn tokens, plus `--brand` and success / warning / danger). Light by default, `.dark` toggle in the top bar.
+- Components: shadcn `components/ui/*` (button, card, badge, switch, table) and the shared classes in `index.css` (`.card`, `.btn`, `.badge-*`, `.data-table`, `.form-input`). **Use tokens (`var(--foreground)`, `text-muted-foreground`, …), never hex colours**, so dark mode keeps working.
+- Dashboard reads `GET /api/dashboard/overview` (cards, "Needs your attention", "What the AI did" = activity-log descriptions in plain English). Lead detail timeline: `GET /api/leads/{id}/timeline`.
+- Screenshots: with backend on :8000 and `npx vite --port 5174`, run `backendenv\Scripts\python design	ake_screenshots.py` (Playwright + Edge). It saves every page at 1366x768 and 1920x1080 to `design/screenshots/`, reports console errors, and refreshes `frontend/public/screenshots/dashboard.png` used on the landing page.
+
 ## 6. Rules for every future change
 
 1. **Never show a fake integration or a fake number in the UI.** Every number on screen comes from real data or a real computation. If a feature isn't connected (for example WhatsApp, email, calendar, STT or an LLM), the UI says so. It never shows a success message.

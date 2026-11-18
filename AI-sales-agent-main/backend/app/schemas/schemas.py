@@ -139,6 +139,7 @@ class MessageOut(BaseModel):
     detected_objection: Optional[str]
     confidence: Optional[float]
     provider: Optional[str] = None
+    sources_json: Optional[str] = None
     created_at: datetime
 
     class Config:

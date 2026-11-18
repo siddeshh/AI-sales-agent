@@ -21,6 +21,7 @@ from app.api.agents import router as agents_router
 from app.api.demo import router as demo_router
 from app.api.ml import router as ml_router
 from app.api.integrations import router as integrations_router
+from app.api.dashboard import router as dashboard_router
 
 # Ensure tables exist immediately
 Base.metadata.create_all(bind=engine)
@@ -75,6 +76,7 @@ app.include_router(agents_router, prefix=settings.API_V1_STR)
 app.include_router(demo_router, prefix=settings.API_V1_STR)
 app.include_router(ml_router, prefix=settings.API_V1_STR)
 app.include_router(integrations_router, prefix=settings.API_V1_STR)
+app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

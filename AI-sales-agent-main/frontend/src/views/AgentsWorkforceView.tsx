@@ -1,3 +1,4 @@
+import { AgentFlowDiagram } from '../components/AgentFlowDiagram';
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Activity, CheckCircle2 } from 'lucide-react';
 import { AgentInfo, AgentActivity } from '../types';
@@ -37,7 +38,7 @@ export const AgentsWorkforceView: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2>AI Agents</h2>
+          <h2>Agents</h2>
           <p>The 10 agents. Runs and durations come from the activity log, which is written by the backend each time an agent actually runs (duration measured, in ms).</p>
         </div>
 
@@ -47,12 +48,14 @@ export const AgentsWorkforceView: React.FC = () => {
         </button>
       </div>
 
+      <AgentFlowDiagram />
+
       {/* Main Grid: Left Agents Table, Right Agent Details & Audit Log */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
         {/* Left: Clean Operations Table */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
-            Workforce Agents ({agents.length})
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
+            All agents ({agents.length})
           </div>
 
           <table className="data-table">
@@ -73,14 +76,14 @@ export const AgentsWorkforceView: React.FC = () => {
                     onClick={() => setSelectedAgent(agent)}
                     style={{
                       cursor: 'pointer',
-                      background: isSelected ? '#f8fafc' : undefined,
+                      background: isSelected ? 'var(--muted)' : undefined,
                     }}
                   >
                     <td>
-                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{agent.name}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{agent.name}</div>
                     </td>
                     <td>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>{agent.role}</span>
+                      <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>{agent.role}</span>
                     </td>
                     <td>
                       <span className={`badge ${agent.invocations_count ? 'badge-green' : 'badge-gray'}`}>
@@ -88,11 +91,11 @@ export const AgentsWorkforceView: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--foreground)' }}>
                         {agent.invocations_count}
                       </span>
                       {agent.avg_duration_ms != null && (
-                        <span style={{ fontSize: '11px', color: '#64748b' }}> · avg {agent.avg_duration_ms} ms</span>
+                        <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}> · avg {agent.avg_duration_ms} ms</span>
                       )}
                     </td>
                   </tr>
@@ -107,29 +110,29 @@ export const AgentsWorkforceView: React.FC = () => {
           {selectedAgent && (
             <div className="card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                   {selectedAgent.name}
                 </div>
                 <span className={`badge ${selectedAgent.status === 'Active' ? 'badge-green' : 'badge-gray'}`}>{selectedAgent.status}</span>
               </div>
 
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
-                Role: <strong style={{ color: '#0f172a' }}>{selectedAgent.role}</strong>
+              <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginBottom: '6px' }}>
+                Role: <strong style={{ color: 'var(--foreground)' }}>{selectedAgent.role}</strong>
               </div>
 
-              <p style={{ fontSize: '13px', lineHeight: 1.5, color: '#475569', marginBottom: '12px' }}>
+              <p style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--muted-foreground)', marginBottom: '12px' }}>
                 {selectedAgent.description}
               </p>
 
-              <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
-                <div>Logged actions: <strong style={{ color: '#0f172a' }}>{selectedAgent.invocations_count}</strong></div>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--muted-foreground)', borderTop: '1px solid var(--muted)', paddingTop: '10px' }}>
+                <div>Logged actions: <strong style={{ color: 'var(--foreground)' }}>{selectedAgent.invocations_count}</strong></div>
               </div>
             </div>
           )}
 
           {/* Activity Log */}
           <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '10px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '10px' }}>
               Activity log (real runs, measured duration)
             </div>
 
@@ -140,19 +143,19 @@ export const AgentsWorkforceView: React.FC = () => {
                   style={{
                     padding: '8px 10px',
                     borderRadius: '4px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '12px',
+                    background: 'var(--muted)',
+                    border: '1px solid var(--border)',
+                    fontSize: '13px',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{act.agent_name}</span>
-                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{act.agent_name}</span>
+                    <span style={{ color: 'var(--muted-foreground)', fontSize: '12px' }}>
                       {act.duration_ms != null ? `${act.duration_ms} ms · ` : ''}
                       {new Date(act.created_at + (act.created_at.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
-                  <div style={{ color: act.status === 'error' ? '#b91c1c' : '#475569' }}>{act.description}</div>
+                  <div style={{ color: act.status === 'error' ? 'var(--danger)' : 'var(--muted-foreground)' }}>{act.description}</div>
                 </div>
               ))}
             </div>

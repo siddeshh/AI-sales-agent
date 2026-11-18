@@ -67,29 +67,29 @@ export const FollowupsView: React.FC = () => {
         </button>
       </div>
 
-      {actionError && <div style={{ fontSize: '12px', color: '#b91c1c' }}>{actionError}</div>}
+      {actionError && <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{actionError}</div>}
 
       {/* Cadence Summary Bar */}
       <div className="card" style={{ padding: '14px 18px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '8px' }}>
           Standard Cadence Steps
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-          <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 0</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Catalogue &amp; Price List</div>
+          <div style={{ padding: '8px 10px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>Day 0</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--foreground)' }}>Catalogue &amp; Price List</div>
           </div>
-          <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 2</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Customisation Options</div>
+          <div style={{ padding: '8px 10px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>Day 2</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--foreground)' }}>Customisation Options</div>
           </div>
-          <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 5</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Sample Call / Showroom Offer</div>
+          <div style={{ padding: '8px 10px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>Day 5</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--foreground)' }}>Sample Call / Showroom Offer</div>
           </div>
-          <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 10</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Final Check-in</div>
+          <div style={{ padding: '8px 10px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>Day 10</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--foreground)' }}>Final Check-in</div>
           </div>
         </div>
       </div>
@@ -135,7 +135,7 @@ export const FollowupsView: React.FC = () => {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-foreground)' }}>
                   No follow-ups in this queue. You're all caught up.
                 </td>
               </tr>
@@ -143,18 +143,18 @@ export const FollowupsView: React.FC = () => {
               filtered.map((fu) => (
                 <tr key={fu.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{fu.lead_name || 'Lead'}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{fu.lead_name || 'Lead'}</div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 500, color: '#0f172a' }}>{fu.title}</div>
+                    <div style={{ fontWeight: 500, color: 'var(--foreground)' }}>{fu.title}</div>
                     {fu.message_content && (
-                      <div style={{ fontSize: '11px', color: '#64748b', maxWidth: '420px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', maxWidth: '420px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {fu.message_content}
                       </div>
                     )}
                   </td>
                   <td>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
                       {new Date(fu.due_date).toLocaleDateString()}
                     </span>
                   </td>
@@ -168,7 +168,7 @@ export const FollowupsView: React.FC = () => {
                       {STATUS[fu.status]?.label || fu.status}
                     </span>
                     {fu.status === 'not_sent' && fu.send_error && (
-                      <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '3px', maxWidth: '260px' }}>{fu.send_error}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--danger)', marginTop: '3px', maxWidth: '260px' }}>{fu.send_error}</div>
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
@@ -177,7 +177,7 @@ export const FollowupsView: React.FC = () => {
                         onClick={() => handleExecute(fu.id)}
                         disabled={executingId === fu.id}
                         className="btn btn-secondary btn-sm"
-                        style={{ height: '26px', fontSize: '11px' }}
+                        style={{ height: '26px', fontSize: '12px' }}
                         title={fu.channel === 'email' ? 'Sends a real email over SMTP' : 'No WhatsApp integration: marks it as simulated, nothing is sent'}
                       >
                         <Send size={11} />
@@ -188,9 +188,9 @@ export const FollowupsView: React.FC = () => {
                         </span>
                       </button>
                     ) : fu.status === 'sent' ? (
-                      <span style={{ fontSize: '11px', color: '#16a34a' }}>✓ Accepted by SMTP server</span>
+                      <span style={{ fontSize: '12px', color: 'var(--success)' }}>✓ Accepted by SMTP server</span>
                     ) : (
-                      <span style={{ fontSize: '11px', color: '#b45309' }}>Not sent (simulated)</span>
+                      <span style={{ fontSize: '12px', color: 'var(--warning)' }}>Not sent (simulated)</span>
                     )}
                   </td>
                 </tr>

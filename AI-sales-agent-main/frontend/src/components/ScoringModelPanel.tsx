@@ -42,10 +42,10 @@ export const ScoringModelPanel: React.FC = () => {
 
   return (
     <div className="card">
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
         About the scoring model
       </div>
-      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.5 }}>
+      <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginBottom: '14px', lineHeight: 1.5 }}>
         Research experiment on the public X Education dataset
         {available && data!.results!.dataset?.rows ? ` (${data!.results!.dataset!.rows.toLocaleString('en-IN')} leads` : ' (9,240 leads'}
         , {available && data!.results!.cv?.folds ? data!.results!.cv!.folds : 5}-fold cross-validation, leakage columns removed).
@@ -53,7 +53,7 @@ export const ScoringModelPanel: React.FC = () => {
         <code>final = round(0.7 × profile base) + BANT bonus</code>.
       </div>
 
-      {error && <div style={{ fontSize: '12px', color: '#b91c1c', marginBottom: '10px' }}>{error}</div>}
+      {error && <div style={{ fontSize: '13px', color: 'var(--danger)', marginBottom: '10px' }}>{error}</div>}
 
       {!available && (
         <div className="badge badge-amber" style={{ marginBottom: '10px', display: 'inline-block' }}>
@@ -87,10 +87,10 @@ export const ScoringModelPanel: React.FC = () => {
             <img
               src={`/api/ml/lead-scoring/figures/${encodeURIComponent(tierFigure)}`}
               alt="Observed conversion rate per lead-score tier on the X Education dataset"
-              style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+              style={{ width: '100%', border: '1px solid var(--border)', borderRadius: '6px' }}
             />
           ) : (
-            <div style={{ fontSize: '12px', color: '#64748b', padding: '16px', border: '1px dashed #cbd5e1', borderRadius: '6px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', padding: '16px', border: '1px dashed var(--border)', borderRadius: '6px' }}>
               The tier conversion chart appears here after the experiment writes tier_conversion.png to
               ml/lead_scoring/output.
             </div>

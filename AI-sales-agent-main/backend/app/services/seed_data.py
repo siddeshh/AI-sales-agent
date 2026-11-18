@@ -175,6 +175,13 @@ SEED_BANT = {
                    "timeline": ("partial", "I'll be in Bengaluru next week")},
 }
 
+# Documents each seeded Knowledge answer quotes (titles only: these answers were written for the seed, not retrieved)
+SEED_SOURCES = {
+    "Sneha Kulkarni": ["Bulk Order Price List 2026", "Customisation and Printing FAQ"],
+    "Arjun Mehta": ["Bulk Order Price List 2026"],
+    "Priya Nair": ["Celestial Wear Product Catalogue 2026", "Bulk Order Price List 2026"],
+}
+
 OBJECTION_TECHNIQUES = {"delivery": "Express production option", "price": "Volume-slab pricing and value",
                         "moq": "Smaller trial order", "competitor": "Quality, customisation and returns policy"}
 
@@ -235,7 +242,9 @@ def seed_database(db: Session):
             at = now - timedelta(days=3) + timedelta(minutes=7 * j)
             db.add(Message(conversation_id=conv.id, sender=sender, agent_name=agent, content=text, intent=m_intent,
                            sentiment=m_sent, detected_objection=objection,
-                           provider="demo seed" if sender == "ai_agent" else None, created_at=at))
+                           provider="demo seed" if sender == "ai_agent" else None, created_at=at,
+                           sources_json=json.dumps([{"title": t} for t in SEED_SOURCES.get(name, [])])
+                           if agent == "Knowledge Agent" else None))
             if sender == "customer" and objection:
                 reply = msgs[j + 1][2]
                 db.add(ObjectionRecord(lead_id=lead.id, conversation_id=conv.id, objection_type=objection,
@@ -251,13 +260,13 @@ def seed_database(db: Session):
             research = LeadResearchAgent.research_lead(lead)
             lead.research_summary, lead.pain_points = research["research_summary"], research["pain_points"]
             lead.buying_intent = research["buying_intent"]
-            run["description"] = f"Demo seed: profiled lead as '{research['persona_type']}'."
+            run["description"] = f"Profiled {lead.name}: {research['persona_type'].lower()} (demo data load)."
         with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
             LeadQualificationAgent.apply_bant_checklist(lead)
             if lead.name in SEED_BANT:
                 lead.bant_json = json.dumps({k: {"status": st, "evidence": ev} for k, (st, ev) in SEED_BANT[lead.name].items()})
             score = LeadQualificationAgent.apply(lead, db)
-            run["description"] = f"Demo seed: BANT checklist and score {score['lead_score']}/100 ({score['score_category']})."
+            run["description"] = f"Scored {lead.name} {score['lead_score']}/100 ({score['score_category']}) (demo data load)."
         lead.next_best_action = research["next_best_action"]
 
     # Next actions for leads in active conversations

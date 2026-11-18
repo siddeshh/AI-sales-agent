@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { DemoTourModal } from './components/DemoTourModal';
@@ -22,7 +23,11 @@ import { api } from './services/api';
 import { Lead, Meeting, FollowUp, DashboardMetrics } from './types';
 
 export function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
+  // The current page lives in the URL (/app/<view>) so reloads and links keep it.
+  const { view } = useParams();
+  const navigate = useNavigate();
+  const currentView = view || 'dashboard';
+  const setCurrentView = (v: string) => navigate(`/app/${v}`);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [selectedLeadForModal, setSelectedLeadForModal] = useState<Lead | null>(null);
   const [activeLeadForChat, setActiveLeadForChat] = useState<number | undefined>(undefined);
@@ -122,6 +127,7 @@ export function App() {
               leads={leads}
               activeLeadId={activeLeadForChat}
               onRefreshLeads={fetchAllData}
+              onOpenLead={setSelectedLeadForModal}
             />
           )}
 

@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -66,7 +67,7 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
     user_msg = Message(
         conversation_id=conv.id,
         sender=sender_type,
-        agent_name="Human Sales Representative" if payload.is_human_agent else None,
+        agent_name="Human rep" if payload.is_human_agent else None,
         content=payload.content,
         created_at=datetime.utcnow()
     )
@@ -74,13 +75,13 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(user_msg)
 
-    # If message is sent by human rep, do not auto-respond with AI agent
-    if payload.is_human_agent:
+    # No AI reply when a human rep wrote it, or when a human has taken over the conversation
+    if payload.is_human_agent or conv.human_takeover:
         return ChatResponse(
             conversation_id=conv.id,
             customer_message=MessageOut.model_validate(user_msg),
             ai_message=None,
-            detected_intent="Human Reply",
+            detected_intent="Human Reply" if payload.is_human_agent else "Waiting for human rep",
             detected_sentiment="Neutral",
             qualification_status=lead.qualification_status,
             lead_score=lead.lead_score,
@@ -107,6 +108,7 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
         detected_objection=ai_turn["detected_objection"],
         confidence=ai_turn["confidence"],  # classifier's own confidence; None when rules were used
         provider=ai_turn["provider"],
+        sources_json=json.dumps(ai_turn.get("rag_sources") or []) if ai_turn.get("rag_sources") else None,
         created_at=datetime.utcnow()
     )
     db.add(ai_msg)
@@ -115,7 +117,7 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
     db.flush()
     with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
         LeadQualificationAgent.apply(lead, db)
-        run["description"] = f"Re-scored after customer message: {lead.lead_score}/100 ({lead.score_category})."
+        run["description"] = f"Re-scored {lead.name} after their message: {lead.lead_score}/100 ({lead.score_category})."
     lead.last_contacted = datetime.utcnow()
 
     db.commit()

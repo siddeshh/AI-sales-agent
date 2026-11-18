@@ -183,10 +183,10 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a' }}>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--foreground)' }}>
               Sales Lifecycle Walkthrough
             </div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
               Step {current.step} of 20 • Guided walkthrough
             </div>
           </div>
@@ -199,7 +199,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
         <div style={{
           width: '100%',
           height: '4px',
-          background: '#f1f5f9',
+          background: 'var(--muted)',
           borderRadius: '2px',
           marginBottom: '20px',
           overflow: 'hidden',
@@ -207,7 +207,7 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
           <div style={{
             width: `${((currentStep + 1) / 20) * 100}%`,
             height: '100%',
-            background: '#2563eb',
+            background: 'var(--brand)',
             transition: 'width 0.2s ease',
           }} />
         </div>
@@ -216,28 +216,28 @@ export const DemoTourModal: React.FC<DemoTourModalProps> = ({ isOpen, onClose, o
         <div style={{
           padding: '18px',
           borderRadius: '6px',
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
+          background: 'var(--muted)',
+          border: '1px solid var(--border)',
           marginBottom: '20px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
               {current.title}
             </span>
             <span style={{
-              fontSize: '11px',
+              fontSize: '12px',
               fontWeight: 500,
               padding: '2px 7px',
               borderRadius: '4px',
-              background: '#eff6ff',
-              color: '#2563eb',
-              border: '1px solid #bfdbfe',
+              background: 'var(--brand-soft)',
+              color: 'var(--brand)',
+              border: '1px solid var(--brand-border)',
             }}>
               {current.agent}
             </span>
           </div>
 
-          <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#475569' }}>
+          <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--muted-foreground)' }}>
             {current.description}
           </p>
         </div>

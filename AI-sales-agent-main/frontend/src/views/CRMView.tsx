@@ -56,10 +56,10 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2>CRM Pipeline</h2>
+          <h2>CRM pipeline</h2>
           <p>
             Open pipeline (stated budgets, excl. Won and Lost):{' '}
-            <strong style={{ color: '#0f172a' }}>
+            <strong style={{ color: 'var(--foreground)' }}>
               {formatCurrency(pipelineData?.total_active_pipeline_value ?? 0)}
             </strong>
           </p>
@@ -94,8 +94,8 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
               style={{
                 width: '260px',
                 minWidth: '260px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                background: 'var(--muted)',
+                border: '1px solid var(--border)',
                 borderRadius: '6px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -105,30 +105,30 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
               {/* Column Header */}
               <div style={{
                 padding: '10px 12px',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: '#ffffff',
+                background: 'var(--card)',
                 borderTopLeftRadius: '6px',
                 borderTopRightRadius: '6px',
               }}>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                     {stageName}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
                     {formatCurrency(colData.total_value_inr)}
                   </div>
                 </div>
 
                 <span style={{
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   padding: '1px 6px',
                   borderRadius: '4px',
-                  background: '#f1f5f9',
-                  color: '#475569',
+                  background: 'var(--muted)',
+                  color: 'var(--muted-foreground)',
                 }}>
                   {colData.count}
                 </span>
@@ -144,7 +144,7 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
                 gap: '8px',
               }}>
                 {colData.leads.length === 0 ? (
-                  <div style={{ padding: '20px 8px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
+                  <div style={{ padding: '20px 8px', textAlign: 'center', fontSize: '13px', color: 'var(--muted-foreground)' }}>
                     No leads
                   </div>
                 ) : (
@@ -154,31 +154,31 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
                       onClick={() => onOpenLead(ld)}
                       style={{
                         padding: '12px',
-                        background: '#ffffff',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--card)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                         cursor: 'pointer',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                           {ld.name}
                         </span>
                         <ScoreBadge score={ld.lead_score} category={ld.score_category} />
                       </div>
 
-                      <div style={{ fontSize: '12px', color: '#475569', marginBottom: '2px' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginBottom: '2px' }}>
                         {ld.budget} • {ld.requirements}
                       </div>
 
-                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', marginBottom: '8px' }}>
                         {ld.location} • {ld.timeline}
                       </div>
 
                       {/* Advance Stage Controls */}
                       <div
-                        style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}
+                        style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid var(--muted)' }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
@@ -195,7 +195,7 @@ export const CRMView: React.FC<CRMViewProps> = ({ onOpenLead, onRefreshLeads }) 
                           disabled={stageIdx === STAGES_LIST.length - 2}
                           onClick={() => handleMoveStage(ld.id, STAGES_LIST[stageIdx + 1])}
                           className="btn btn-secondary btn-sm"
-                          style={{ padding: '2px 8px', height: '22px', fontSize: '11px' }}
+                          style={{ padding: '2px 8px', height: '22px', fontSize: '12px' }}
                         >
                           <span>Move next</span>
                           <ChevronRight size={11} />

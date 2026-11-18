@@ -56,6 +56,8 @@ export interface Message {
   sentiment?: string;
   detected_objection?: string;
   confidence?: number;
+  provider?: string | null;
+  sources_json?: string | null;
   created_at: string;
 }
 

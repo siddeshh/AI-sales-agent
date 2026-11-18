@@ -74,7 +74,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2>Meetings &amp; Appointments</h2>
+          <h2>Meetings</h2>
           <p>Product demo / sample review calls and showroom visits. Slots follow showroom hours; meetings are stored in this app only.</p>
           <span className="badge badge-amber" style={{ marginTop: '6px', display: 'inline-block' }}>
             Google Calendar — Demo mode — simulated (no invite or video link is created)
@@ -91,7 +91,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
         {/* Scheduled Appointments */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
             Scheduled Appointments ({meetings.length})
           </div>
 
@@ -107,7 +107,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
             <tbody>
               {meetings.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-foreground)' }}>
                     No appointments scheduled yet.
                   </td>
                 </tr>
@@ -115,19 +115,19 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
                 meetings.map((m) => (
                   <tr key={m.id}>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{m.title}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{m.meeting_type}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{m.title}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{m.meeting_type}</div>
                     </td>
                     <td>
-                      <div style={{ fontSize: '12px', color: '#0f172a' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--foreground)' }}>
                         {new Date(m.scheduled_time).toLocaleDateString()}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
                         {new Date(m.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({m.duration_minutes}m)
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontSize: '12px', color: '#475569' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
                         {m.location_or_link}
                       </span>
                     </td>
@@ -146,10 +146,10 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
         {/* Available Calendar Slots */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
               Available Calendar Slots
             </div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
               Working hours (10:00 AM - 6:00 PM IST)
             </div>
           </div>
@@ -161,18 +161,18 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
                 style={{
                   padding: '9px 12px',
                   borderRadius: '6px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--muted)',
+                  border: '1px solid var(--border)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--foreground)' }}>
                     {s.display}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
                     {s.recommended_for}
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
                     setIsBookModalOpen(true);
                   }}
                   className="btn btn-secondary btn-sm"
-                  style={{ height: '24px', fontSize: '11px' }}
+                  style={{ height: '24px', fontSize: '12px' }}
                 >
                   Book
                 </button>
@@ -197,10 +197,10 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
       {isBookModalOpen && (
         <div className="modal-overlay">
           <div className="modal-box" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '16px', color: '#0f172a', marginBottom: '16px' }}>Book Appointment</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--foreground)', marginBottom: '16px' }}>Book Appointment</h3>
             <form onSubmit={handleBook} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Prospect *
                 </label>
                 <select
@@ -218,7 +218,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                     Type
                   </label>
                   <select
@@ -235,7 +235,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                     Slot
                   </label>
                   <select
@@ -253,7 +253,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Location / Meeting Link
                 </label>
                 <input

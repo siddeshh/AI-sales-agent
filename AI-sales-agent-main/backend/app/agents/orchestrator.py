@@ -41,6 +41,15 @@ CLASSIFY_SYSTEM = (
 )
 
 
+OBJECTION_LABEL = {"price": "price", "moq": "minimum order", "delivery": "delivery time", "competitor": "competitor",
+                   "authority": "needs approval", "timing": "not now", "no_interest": "not interested",
+                   "send_details": "send details"}
+
+
+def first_name(lead) -> str:
+    return (lead.name or "the lead").split()[0]
+
+
 class WorkforceOrchestrator:
     """
     Central Multi-Agent State Machine & Workflow Orchestrator
@@ -64,15 +73,16 @@ class WorkforceOrchestrator:
             lead.research_summary = research["research_summary"]
             lead.pain_points = research["pain_points"]
             lead.buying_intent = research["buying_intent"]
-            run["description"] = f"Profiled lead as '{research['persona_type']}' from the lead form."
+            run["description"] = f"Profiled {lead.name}: {research['persona_type'].lower()}."
 
         # Step 2: Lead Qualification Agent: BANT first (it is a score factor), then score
         with agent_run(db, "Lead Qualification Agent", "qualify", lead) as run:
             qual = LeadQualificationAgent.apply_bant_checklist(lead)
-            run["description"] = f"BANT checklist from the lead form: {lead.qualification_status}. {qual['reason']}"
+            run["description"] = f"Checked {lead.name}'s lead form for BANT: {lead.qualification_status.lower()}."
+            run["details"] = qual["reason"]
         with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
             score_res = LeadQualificationAgent.apply(lead, db)
-            run["description"] = f"Scored {lead.lead_score}/100 ({lead.score_category})."
+            run["description"] = f"Scored {lead.name} {lead.lead_score}/100 ({lead.score_category})."
 
         # Step 4: CRM Agent State Update
         lead.next_best_action = "Send introduction message with catalogue and bulk price list"
@@ -169,8 +179,9 @@ class WorkforceOrchestrator:
         history = cls._history(conversation, user_message, db)
         with agent_run(db, "Orchestrator", "classify", lead) as run:
             cls_res, cls_provider = cls.classify(user_message, history)
-            run["description"] = (f"Classified message as {cls_res.intent} / {cls_res.sentiment}"
-                                  f"{' / ' + cls_res.objection_type if cls_res.objection_type else ''} ({cls_provider}).")
+            run["description"] = (f"Read {first_name(lead)}'s message: {cls_res.intent.replace('_', ' ')}"
+                                  f"{' (' + OBJECTION_LABEL.get(cls_res.objection_type, '') + ')' if cls_res.objection_type else ''}.")
+            run["details"] = f"sentiment={cls_res.sentiment}; confidence={cls_res.confidence}; classifier={cls_provider}"
         base = {
             "intent": cls_res.intent,
             "sentiment": cls_res.sentiment.title(),
@@ -183,9 +194,9 @@ class WorkforceOrchestrator:
 
         with agent_run(db, "Lead Qualification Agent", "bant_update", lead) as run:
             if update_bant_from_conversation(lead, history) is not None:
-                run["description"] = f"BANT updated from the conversation: {lead.qualification_status}."
+                run["description"] = f"Updated {first_name(lead)}'s BANT from the conversation: {lead.qualification_status.lower()}."
             else:
-                run["description"], run["status"] = "BANT not updated (no LLM available); kept previous values.", "warning"
+                run["description"], run["status"] = f"Kept {first_name(lead)}'s BANT as it was (no language model configured).", "warning"
 
         # Human handoff
         if cls_res.intent == "human_request":
@@ -203,7 +214,9 @@ class WorkforceOrchestrator:
                     lead_id=lead.id, conversation_id=conversation.id, objection_type=obj_type,
                     customer_statement=user_message, handled_response=obj_res["handled_response"],
                     technique_used=obj_res["technique_used"], resolution_status="Addressed"))
-                run["description"] = f"Answered '{obj_type}' objection with '{obj_res['technique_used']}' ({obj_res['provider']})."
+                run["description"] = (f"Handled {first_name(lead)}'s {OBJECTION_LABEL.get(obj_type, obj_type)} objection "
+                                      f"({obj_res['technique_used'].lower()}).")
+                run["details"] = f"reply by {obj_res['provider']}"
             lead.next_best_action = f"Follow-up with tailored proposal addressing {obj_type} concern"
             db.commit()
             return {**base, "detected_objection": obj_type, "active_agent": "Objection Agent",
@@ -213,7 +226,8 @@ class WorkforceOrchestrator:
         if cls_res.intent == "ready_to_buy":
             with agent_run(db, "Scheduling Agent", "meeting_propose", lead) as run:
                 sched = SchedulingAgent.generate_reply(lead, history)
-                run["description"] = f"Proposed {min(3, len(sched['slots']))} open slots ({sched['provider']}); nothing booked yet."
+                run["description"] = f"Offered {first_name(lead)} {min(3, len(sched['slots']))} meeting slots (not booked yet)."
+                run["details"] = f"reply by {sched['provider']}"
             if lead.stage in ["New", "Contacted", "Engaged"]:
                 lead.stage = "Qualified"
             lead.next_best_action = "Confirm Meeting Slot"
@@ -224,12 +238,19 @@ class WorkforceOrchestrator:
         if cls_res.intent == "question":
             with agent_run(db, "Knowledge Agent", "rag_search", lead) as run:
                 rag_res = KnowledgeRAGAgent.answer_question(user_message, db, lead=lead, history=history)
-                run["description"] = (
-                    f"Top similarity {rag_res['confidence']:.2f}; {len(rag_res['sources'])} chunks above "
-                    f"{settings.RAG_SIMILARITY_THRESHOLD}; answer by {rag_res['provider']}"
-                    + ("; grounding check failed twice, follow-up task created" if rag_res["grounding_failed"] else "") + ".")
+                docs = sorted({s["title"] for s in rag_res["sources"]})
+                if rag_res["is_unavailable"]:
+                    run["description"] = f"Could not answer {first_name(lead)}'s question from the knowledge base."
+                elif rag_res["grounding_failed"]:
+                    run["description"] = (f"Held back an answer to {first_name(lead)}: it used a number that is not in "
+                                          f"the documents. Created a follow-up task.")
+                else:
+                    run["description"] = f"Answered {first_name(lead)}'s question using {', '.join(docs)}."
                 if rag_res["is_unavailable"] or rag_res["grounding_failed"]:
                     run["status"] = "warning"
+                # the question itself, so the dashboard can list unanswered questions
+                run["details"] = (f"question: {user_message} | top similarity {rag_res['confidence']:.2f}, "
+                                  f"threshold {settings.RAG_SIMILARITY_THRESHOLD}, answer by {rag_res['provider']}")
             if rag_res["is_unavailable"]:
                 lead.rag_miss_streak = (lead.rag_miss_streak or 0) + 1
                 if lead.rag_miss_streak >= 2:
@@ -249,7 +270,8 @@ class WorkforceOrchestrator:
         # Greeting / other
         with agent_run(db, "Communication Agent", "reply", lead) as run:
             reply = SalesCommunicationAgent.generate_reply(lead, history)
-            run["description"] = f"Wrote reply ({reply['provider']})."
+            run["description"] = f"Replied to {first_name(lead)}."
+            run["details"] = f"reply by {reply['provider']}"
         db.commit()
         return {**base, "active_agent": "Communication Agent", "ai_reply": reply["reply"], "provider": reply["provider"]}
 
@@ -275,7 +297,7 @@ class WorkforceOrchestrator:
             conversation.status = "human_takeover"
             lead.next_best_action = "Human Sales Rep Takeover Required"
             lead.next_best_action_reason = reason
-            run["description"], run["status"] = f"Handed conversation to a human: {reason}.", "handoff"
+            run["description"], run["status"] = f"Handed {first_name(lead)}'s conversation to a human: {reason.lower()}.", "handoff"
         db.commit()
         return {**base, "active_agent": "Orchestrator", "ai_reply": reply, "provider": "rules",
                 "human_handoff_triggered": True, "handoff_reason": reason}

@@ -44,14 +44,15 @@ def execute_followup(followup_id: int, db: Session = Depends(get_db)):
             if res["ok"]:
                 fu.status, fu.send_error, fu.executed_at = "sent", None, datetime.utcnow()
                 delivered_to = res["delivered_to"]
-                run["description"] = f"Email accepted by SMTP server for {delivered_to} (subject: {res['subject']})."
+                run["description"] = f"Emailed {lead.name}: \"{fu.title}\" (accepted by the mail server)."
+                run["details"] = f"delivered to {delivered_to}; subject: {res['subject']}"
             else:
                 fu.status, fu.send_error = "not_sent", res["error"]
-                run["status"], run["description"] = "error", f"Email not sent: {res['error']}"
+                run["status"], run["description"] = "error", f"Could not email {lead.name if lead else 'the lead'}: {res['error']}"
         else:
             fu.status, fu.send_error, fu.executed_at = "simulated", None, datetime.utcnow()
             run["status"] = "warning"
-            run["description"] = f"Demo mode: simulated {fu.channel} send. Nothing was sent (no {fu.channel} integration)."
+            run["description"] = f"Simulated a {fu.channel} follow-up to {lead.name if lead else 'the lead'} (demo mode, nothing was sent)."
     db.commit()
 
     return {

@@ -57,7 +57,7 @@ async def upload_document(
     db.flush()
     with agent_run(db, "Knowledge Agent", "index_document") as run:
         index_chunks(db, chunks)
-        run["description"] = f"Embedded and indexed '{title}' ({len(chunks)} chunks)."
+        run["description"] = f"Added '{title}' to the knowledge base ({len(chunks)} chunks)."
     db.commit()
     db.refresh(doc)
     return doc
