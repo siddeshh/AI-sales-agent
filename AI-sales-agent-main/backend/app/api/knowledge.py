@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -39,6 +40,14 @@ async def upload_document(
     if not raw_chunks:
         raise HTTPException(status_code=400, detail="No readable text in this file. Upload a .txt or .md file.")
 
+    # Same title = a newer version of that document: replace it instead of keeping two copies
+    title = title.strip()
+    old = db.query(KnowledgeDocument).filter(func.lower(KnowledgeDocument.title) == title.lower()).all()
+    for o in old:
+        vector_store().delete([c.id for c in o.chunks])
+        db.delete(o)
+    db.flush()
+
     doc = KnowledgeDocument(
         title=title,
         filename=file.filename or "uploaded_doc.txt",
@@ -57,7 +66,7 @@ async def upload_document(
     db.flush()
     with agent_run(db, "Knowledge Agent", "index_document") as run:
         index_chunks(db, chunks)
-        run["description"] = f"Added '{title}' to the knowledge base ({len(chunks)} chunks)."
+        run["description"] = (f"{'Replaced' if old else 'Added'} '{title}' in the knowledge base ({len(chunks)} chunks).")
     db.commit()
     db.refresh(doc)
     return doc

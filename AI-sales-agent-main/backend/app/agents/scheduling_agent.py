@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
+import re
+from datetime import date, datetime, timedelta
+from typing import Dict, Any, List, Optional
 from app.services.llm import chat, build_sales_system, provider_label, LLMUnavailable
 
 class SchedulingAgent:
@@ -12,6 +13,48 @@ class SchedulingAgent:
     - Prepares calendar invites & location access tokens
     """
     AGENT_NAME = "Scheduling Agent"
+
+    WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+    @classmethod
+    def requested_day(cls, text: str) -> Optional[date]:
+        """'tomorrow' or a weekday name in the message -> that date (the next one after today); else None."""
+        t = text.lower()
+        today = datetime.utcnow().date()
+        if "tomorrow" in t:
+            return today + timedelta(days=1)
+        for i, name in enumerate(cls.WEEKDAYS):
+            if re.search(rf"\b{name}\b", t):
+                ahead = (i - today.weekday()) % 7 or 7
+                return today + timedelta(days=ahead)
+        return None
+
+    @classmethod
+    def book_requested(cls, db, lead, text: str) -> Optional[Any]:
+        """Book the first free slot on the day the customer asked for. Returns the Meeting, or None when no day
+        was named or that day has no free slot (e.g. Sunday). Stored in this app's database only."""
+        from app.models.entities import Meeting
+        day = cls.requested_day(text)
+        if day is None:
+            return None
+        taken = {m.scheduled_time for m in db.query(Meeting).filter(Meeting.status == "scheduled").all()}
+        free = [s for s in cls.get_available_slots(days_ahead=7)
+                if s["date"] == day.isoformat() and datetime.fromisoformat(s["iso"]) not in taken]
+        if not free:
+            return None
+        visit = any(w in text.lower() for w in ["visit", "showroom", "come to", "in person"])
+        when = datetime.fromisoformat(free[0]["iso"])
+        meeting = Meeting(
+            lead_id=lead.id, scheduled_time=when, status="scheduled",
+            meeting_type="showroom_visit" if visit else "product_demo",
+            duration_minutes=60 if visit else 30,
+            title=f"{'Showroom visit' if visit else 'Product demo / sample review call'}: {lead.name}",
+            location_or_link="Celestial Wear Studio, Indiranagar, Bengaluru" if visit else "Video call (link not generated)",
+            notes=f"Booked by the AI from the customer's message: \"{text}\"",
+        )
+        db.add(meeting)
+        db.flush()
+        return meeting
 
     @classmethod
     def get_available_slots(cls, days_ahead: int = 5) -> List[Dict[str, Any]]:

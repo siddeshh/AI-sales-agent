@@ -16,6 +16,7 @@ from app.rag.engine import DocumentChunker, index_chunks
 from app.services.activity import agent_run
 
 # --------------------------------------------------------------------------- knowledge base
+# The bulk price list is NOT seeded: it is data/samples/bulk_order_price_list.txt, uploaded in demo step 1.
 KNOWLEDGE_DOCS = [
     ("Celestial Wear Product Catalogue 2026", "product_catalogue_2026.txt", "Catalogue", """
 Celestial Wear product catalogue 2026. Retail prices (MRP) per piece, inclusive of GST, for online orders on celestialwear.in.
@@ -31,24 +32,6 @@ Cotton Twill Cap: adjustable strap, one size, 8 colours. MRP ₹449.
 Canvas Tote Bag: 12 oz cotton canvas, 38 x 42 cm. MRP ₹399.
 All garments are pre-shrunk and made with our manufacturing partner in Tiruppur. Size charts are on each product page.
 Showroom: Celestial Wear Studio, Indiranagar, Bengaluru, open Monday to Saturday, 11 AM to 7 PM, by appointment for bulk buyers.
-"""),
-    ("Bulk Order Price List 2026", "bulk_price_list_2026.txt", "Pricing", """
-Celestial Wear bulk order price list 2026. Prices per piece in rupees, excluding GST, plain garments.
-Minimum order quantity (MOQ) for bulk pricing is 50 pieces per style; colours and sizes can be mixed within a style.
-Volume slabs: 50-99 pieces 15% off MRP, 100-249 pieces 22% off, 250-499 pieces 28% off, 500 or more pieces 35% off.
-Classic Crew Tee: 50+ ₹467, 100+ ₹428, 250+ ₹395, 500+ ₹357.
-Heavyweight Oversized Tee: 50+ ₹679, 100+ ₹623, 250+ ₹575, 500+ ₹519.
-Pique Polo: 50+ ₹764, 100+ ₹701, 250+ ₹647, 500+ ₹584.
-French Terry Hoodie: 50+ ₹1,359, 100+ ₹1,247, 250+ ₹1,151, 500+ ₹1,039.
-Zip-Up Hoodie: 50+ ₹1,614, 100+ ₹1,481, 250+ ₹1,367, 500+ ₹1,234.
-Crewneck Sweatshirt: 50+ ₹1,104, 100+ ₹1,013, 250+ ₹935, 500+ ₹844.
-Linen-Blend Kurta: 50+ ₹1,274, 100+ ₹1,169, 250+ ₹1,079, 500+ ₹974.
-Relaxed Joggers: 50+ ₹1,019, 100+ ₹935, 250+ ₹863, 500+ ₹779.
-Cotton Twill Cap: 50+ ₹382, 100+ ₹350, 250+ ₹323, 500+ ₹292.
-Canvas Tote Bag: 50+ ₹339, 100+ ₹311, 250+ ₹287, 500+ ₹259.
-Trial order: 20 to 49 pieces of one style at 10% off MRP, plain or one-colour print, so buyers can check quality before a full bulk order.
-Printing and embroidery are charged extra (see the customisation FAQ). GST is added at invoicing.
-Payment: 50% advance with the order, balance before dispatch. Quotes are valid for 30 days.
 """),
     ("Shipping and Returns Policy", "shipping_returns_policy.txt", "Policy", """
 Celestial Wear shipping and returns policy.
@@ -156,20 +139,20 @@ CONVERSATIONS = {
 # BANT evidence for leads with seeded conversations, in the same shape the LLM writes (Lead.bant_json).
 # Quotes are verbatim from the seeded messages above or from the lead form ("Lead form: ...").
 SEED_BANT = {
-    "Sneha Kulkarni": {"budget": ("partial", "Lead form: ₹3,50,000"), "authority": ("partial", "Lead form: HR Manager"),
+    "Sneha Kulkarni": {"budget": ("confirmed", "Lead form: ₹3,50,000"), "authority": ("confirmed", "Lead form: HR Manager"),
                        "need": ("confirmed", "we need around 250 hoodies with our logo embroidered"),
                        "timeline": ("confirmed", "The offsite is in 12 days.")},
     "Arjun Mehta": {"budget": ("partial", "That's too expensive, I get similar tees for less."),
-                    "authority": ("partial", "Lead form: Owner"),
+                    "authority": ("confirmed", "Lead form: Owner"),
                     "need": ("confirmed", "What's your best price for 500 oversized tees?"),
-                    "timeline": ("partial", "Lead form: Within 30 days")},
-    "Ananya Iyer": {"budget": ("absent", ""), "authority": ("partial", "Lead form: Owner"),
+                    "timeline": ("confirmed", "Lead form: Within 30 days")},
+    "Ananya Iyer": {"budget": ("absent", ""), "authority": ("confirmed", "Lead form: Owner"),
                     "need": ("confirmed", "I only need about 40 tees to test my Instagram store."),
                     "timeline": ("absent", "")},
-    "Harsh Agarwal": {"budget": ("partial", "Lead form: ₹5,00,000"), "authority": ("partial", "Lead form: Procurement Manager"),
+    "Harsh Agarwal": {"budget": ("confirmed", "Lead form: ₹5,00,000"), "authority": ("confirmed", "Lead form: Procurement Manager"),
                       "need": ("partial", "getting quotes from a supplier in Ludhiana who is cheaper for sweatshirts"),
-                      "timeline": ("partial", "Lead form: Within 6 weeks")},
-    "Priya Nair": {"budget": ("partial", "Lead form: ₹1,20,000"),
+                      "timeline": ("confirmed", "Lead form: Within 6 weeks")},
+    "Priya Nair": {"budget": ("confirmed", "Lead form: ₹1,20,000"),
                    "authority": ("confirmed", "I run a boutique in Kochi."),
                    "need": ("confirmed", "Do you have linen kurtas in pastel colours?"),
                    "timeline": ("partial", "I'll be in Bengaluru next week")},
@@ -177,9 +160,9 @@ SEED_BANT = {
 
 # Documents each seeded Knowledge answer quotes (titles only: these answers were written for the seed, not retrieved)
 SEED_SOURCES = {
-    "Sneha Kulkarni": ["Bulk Order Price List 2026", "Customisation and Printing FAQ"],
-    "Arjun Mehta": ["Bulk Order Price List 2026"],
-    "Priya Nair": ["Celestial Wear Product Catalogue 2026", "Bulk Order Price List 2026"],
+    "Sneha Kulkarni": ["Bulk order price list", "Customisation and Printing FAQ"],
+    "Arjun Mehta": ["Bulk order price list"],
+    "Priya Nair": ["Celestial Wear Product Catalogue 2026", "Bulk order price list"],
 }
 
 OBJECTION_TECHNIQUES = {"delivery": "Express production option", "price": "Volume-slab pricing and value",

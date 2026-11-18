@@ -224,6 +224,24 @@ class WorkforceOrchestrator:
 
         # Meeting intent
         if cls_res.intent == "ready_to_buy":
+            # The customer named a day: book the first free slot that day (in this app's database)
+            with agent_run(db, "Scheduling Agent", "meeting_booked", lead) as run:
+                meeting = SchedulingAgent.book_requested(db, lead, user_message)
+                if meeting:
+                    when = meeting.scheduled_time.strftime("%A %d %b at %I:%M %p")
+                    label = "showroom visit" if meeting.meeting_type == "showroom_visit" else "sample review call"
+                    run["description"] = f"Booked a {label} with {lead.name}, {meeting.scheduled_time.strftime('%a %d %b, %I:%M %p')}."
+                else:
+                    run["description"], run["status"] = "No day named or no free slot that day; offering slots instead.", "warning"
+            if meeting:
+                CRMAgent.update_lead_state(lead, db, stage="Meeting Scheduled",
+                                           next_action=f"Hold the {label} on {when}",
+                                           next_action_reason="Booked by the AI when the customer asked for that day.")
+                reply = (f"Done, I've booked a {label} for {when}. "
+                         + ("You can visit us at Celestial Wear Studio, Indiranagar, Bengaluru."
+                            if meeting.meeting_type == "showroom_visit"
+                            else "A member of our team will send you the call link before then."))
+                return {**base, "active_agent": "Scheduling Agent", "ai_reply": reply, "provider": "rules"}
             with agent_run(db, "Scheduling Agent", "meeting_propose", lead) as run:
                 sched = SchedulingAgent.generate_reply(lead, history)
                 run["description"] = f"Offered {first_name(lead)} {min(3, len(sched['slots']))} meeting slots (not booked yet)."

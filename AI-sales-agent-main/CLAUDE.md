@@ -91,7 +91,7 @@ Known limits:
 | Area | How it actually works |
 |---|---|
 | Research | Persona chosen by `Lead.buyer_type` (wholesale / corporate / individual) plus the lead's own form fields. No external lookup. |
-| Scoring | `final = round(0.7 × base) + BANT bonus`. Base = five profile factors (order value / quantity fit 25, timeline 20, buyer type 15, engagement 15, source 10; max 85) scaled to 0–100. BANT bonus = min(30, round(30 × (confirmed/4)^1.5 + 1.5 × partial)), using conversation BANT (`Lead.bant_json`) when present; lead-form BANT only counts as partial. Stored in `Lead.score_breakdown_json` and shown on the lead page. Hot (81+) needs ≥3 confirmed BANT slots. Not a trained model: the Random Forest lives offline in `ml/lead_scoring/` (shown on Analytics). |
+| Scoring | `final = round(0.7 × base) + BANT bonus`. Base = five profile factors (order value / quantity fit 25, timeline 20, buyer type 15, engagement 15, source 10; max 85) scaled to 0–100. BANT bonus = min(30, round(30 × (confirmed/4)^1.5 + 1.5 × partial)), using conversation BANT (`Lead.bant_json`) when present; what the lead stated on the lead form counts as confirmed. Stored in `Lead.score_breakdown_json` and shown on the lead page. Hot (81+) needs ≥3 confirmed BANT slots. Not a trained model: the Random Forest lives offline in `ml/lead_scoring/` (shown on Analytics). |
 | BANT at lead intake | Keyword and threshold checks (`evaluate_bant`). The LLM version above takes over once the lead sends messages. |
 | Handoff reply, follow-up cadence texts, `/leads/{id}/outreach` drafts | Fixed templates. |
 | Document upload | Plain-text decode only. Files with no readable text are rejected with a 400; PDF/DOCX extraction isn't built yet. |

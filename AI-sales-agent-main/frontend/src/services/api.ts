@@ -211,6 +211,10 @@ export const api = {
     return request('/integrations');
   },
 
+  async importLeads(formData: FormData): Promise<any> {
+    return request('/leads/import', { method: 'POST', body: formData });
+  },
+
   async getDashboardOverview(): Promise<any> {
     return request('/dashboard/overview');
   },

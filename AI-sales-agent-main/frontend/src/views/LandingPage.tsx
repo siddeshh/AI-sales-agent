@@ -36,7 +36,7 @@ const AGENTS: { name: string; text: string; Icon: React.ComponentType<{ classNam
 
 const NUMBERS = [
   { value: '10', label: 'Agents, each with one job', Icon: Cpu, tone: 'bg-blue-900/40 text-blue-400' },
-  { value: '4', label: 'Documents in the demo knowledge base', Icon: BookOpen, tone: 'bg-green-900/40 text-green-400' },
+  { value: '4', label: 'Knowledge documents in the demo (3 loaded, 1 uploaded live)', Icon: BookOpen, tone: 'bg-green-900/40 text-green-400' },
   { value: '0.902', label: 'ROC-AUC of the Random Forest scorer on the X Education dataset (research paper)', Icon: BarChart3, tone: 'bg-purple-900/40 text-purple-400' },
   { value: '2', label: 'Real integrations: email over SMTP and the internal CRM', Icon: CheckCircle, tone: 'bg-orange-900/40 text-orange-400' },
 ];

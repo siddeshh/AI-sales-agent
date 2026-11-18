@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, MessageSquare, PhoneCall, Calendar, BookOpen, Clock, Kanban, BarChart2, Cpu, Settings, Home,
+  LayoutDashboard, Users, MessageSquare, PhoneCall, Calendar, BookOpen, Clock, Kanban, BarChart2, Cpu, Settings, Home, ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,7 @@ const NAV: { id: string; label: string; icon: React.ComponentType<{ className?: 
   { id: 'analytics', label: 'Analytics', icon: BarChart2 },
   { id: 'agents', label: 'Agents', icon: Cpu },
   { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'demo', label: 'Demo checklist', icon: ListChecks },
 ];
 
 export const VIEW_TITLES: Record<string, string> = Object.fromEntries(NAV.map((n) => [n.id, n.label]));

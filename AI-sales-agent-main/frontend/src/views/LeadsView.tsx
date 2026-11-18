@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Plus, Search, Filter, Upload, Eye, Trash2, 
   MessageSquare, PhoneCall, CheckSquare, Square 
@@ -28,6 +28,28 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: { id: number; name: string; lead_score: number; score_category: string }[]; errors: { line: number; error: string }[] } | null>(null);
+  const [importError, setImportError] = useState('');
+
+  const handleImport = async (file?: File) => {
+    if (!file) return;
+    setImporting(true);
+    setImportError('');
+    setImportResult(null);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      setImportResult(await api.importLeads(fd));
+      onRefreshLeads();
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : 'Import failed');
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
 
   // Form State
   const [newName, setNewName] = useState('');
@@ -122,11 +144,43 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           <p>Manage and prioritize your sales pipeline.</p>
         </div>
 
-        <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary btn-sm">
-          <Plus size={14} />
-          <span>Add Lead</span>
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => handleImport(e.target.files?.[0])} />
+          <button onClick={() => fileRef.current?.click()} disabled={importing} className="btn btn-secondary btn-sm"
+            title="CSV columns: name, email, phone, company, job_title, location, budget, order_quantity, buyer_type, requirements, timeline, source">
+            <Upload size={14} />
+            <span>{importing ? 'Importing…' : 'Import CSV'}</span>
+          </button>
+          <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary btn-sm">
+            <Plus size={14} />
+            <span>Add Lead</span>
+          </button>
+        </div>
       </div>
+
+      {importError && <div className="text-sm text-danger">{importError}</div>}
+      {importResult && (
+        <div className="card" style={{ padding: '12px 16px' }}>
+          <div className="text-[14px] font-medium">
+            Imported {importResult.imported.length} lead{importResult.imported.length === 1 ? '' : 's'}; each was profiled, checked for BANT and scored.
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {[...importResult.imported].sort((a, b) => b.lead_score - a.lead_score).map((l) => {
+              const lead = leads.find((x) => x.id === l.id);
+              return (
+                <button key={l.id} onClick={() => lead && onOpenLead(lead)} className="badge badge-gray hover:bg-accent" title="Open to see why">
+                  {l.name}: {l.lead_score} · {l.score_category}
+                </button>
+              );
+            })}
+          </div>
+          {importResult.errors.length > 0 && (
+            <ul className="mt-2 text-sm text-danger">
+              {importResult.errors.map((e) => <li key={e.line}>Line {e.line}: {e.error}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>

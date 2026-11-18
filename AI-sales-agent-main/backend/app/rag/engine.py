@@ -5,6 +5,7 @@ VECTOR_STORE=qdrant: same vectors mirrored into Qdrant (QDRANT_URL, or embedded 
 SQLite stays the source of truth for chunk text either way.
 """
 import atexit
+import os
 import json
 import logging
 import re
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 
 log = logging.getLogger("nova.rag")
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 
 class EmbeddingEngine:
@@ -28,7 +30,11 @@ class EmbeddingEngine:
         if cls._model is None:
             from sentence_transformers import SentenceTransformer  # heavy import (torch): only when first needed
             log.info("Loading embedding model %s", settings.EMBEDDING_MODEL)
-            cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu")
+            try:  # cached copy first, so startup needs no internet
+                cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu", local_files_only=True)
+            except Exception:
+                log.warning("Embedding model not cached yet; downloading it once (needs internet)")
+                cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu")
         return cls._model
 
     @classmethod

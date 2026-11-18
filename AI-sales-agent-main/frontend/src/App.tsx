@@ -17,6 +17,7 @@ import { FollowupsView } from './views/FollowupsView';
 import { AnalyticsView } from './views/AnalyticsView';
 import { AgentsWorkforceView } from './views/AgentsWorkforceView';
 import { SettingsView } from './views/SettingsView';
+import { DemoChecklistView } from './views/DemoChecklistView';
 
 // API & Types
 import { api } from './services/api';
@@ -169,6 +170,17 @@ export function App() {
 
           {currentView === 'agents' && (
             <AgentsWorkforceView />
+          )}
+
+          {currentView === 'demo' && (
+            <DemoChecklistView
+              leads={leads}
+              onNavigate={setCurrentView}
+              onOpenChat={handleOpenLeadChat}
+              onOpenLead={setSelectedLeadForModal}
+              onResetDemo={handleResetDemo}
+              isResetting={isResetting}
+            />
           )}
 
           {currentView === 'settings' && (

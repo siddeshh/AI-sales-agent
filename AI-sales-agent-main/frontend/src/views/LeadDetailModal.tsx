@@ -388,8 +388,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       </div>
                       <div style={{ marginTop: '6px', color: 'var(--muted-foreground)' }}>
                         The base works like a model score from the lead's profile. The BANT bonus grows faster with each
-                        slot confirmed in conversation (0, 4, 11, 19, 30 points for 0–4 confirmed), so confirmed evidence
-                        outweighs the profile once the customer states it. BANT source: {breakdown.bant_source}.
+                        confirmed slot (0, 4, 11, 19, 30 points for 0–4 confirmed). Confirmed means the lead stated it: on the
+                        lead form, or later in the conversation (which overrides the form). BANT source: {breakdown.bant_source}.
                       </div>
                     </div>
                   )}

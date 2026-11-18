@@ -75,4 +75,4 @@ The backend serves it at `GET /api/ml/lead-scoring` (folder set by `ML_RESULTS_D
 
 ## How this relates to the app's score
 
-The app sells apparel, not courses, so this model is **not** loaded into the app. The experiment shows that profile and behaviour features predict conversion (Random Forest AUC 0.902 vs rules 0.828). The app mirrors that structure in an explainable form: `final = round(0.7 × base) + BANT bonus`, where the base comes from profile factors and the bonus grows with BANT slots confirmed in conversation. See `backend/app/agents/lead_scoring_agent.py`.
+The app sells apparel, not courses, so this model is **not** loaded into the app. The experiment shows that profile and behaviour features predict conversion (Random Forest AUC 0.902 vs rules 0.828). The app mirrors that structure in an explainable form: `final = round(0.7 × base) + BANT bonus`, where the base comes from profile factors and the bonus grows with each BANT slot the lead has confirmed (on the form or in the conversation). See `backend/app/agents/qualification_agent.py`.

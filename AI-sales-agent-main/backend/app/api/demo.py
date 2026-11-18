@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db, Base, engine, SessionLocal
@@ -22,3 +25,15 @@ def reset_demo_data(db: Session = Depends(get_db)):
     finally:
         fresh.close()
     return {"status": "success", "message": "Demo data reset to the Celestial Wear seed."}
+
+
+SAMPLES_DIR = Path(__file__).resolve().parents[3] / "data" / "samples"
+SAMPLE_FILES = {"leads.csv": "text/csv", "bulk_order_price_list.txt": "text/plain"}
+
+
+@router.get("/samples/{name}")
+def download_sample(name: str):
+    """The two files used in the demo steps (data/samples/). Only these names are served."""
+    if name not in SAMPLE_FILES or not (SAMPLES_DIR / name).is_file():
+        raise HTTPException(status_code=404, detail="Sample not found")
+    return FileResponse(SAMPLES_DIR / name, media_type=SAMPLE_FILES[name], filename=name)

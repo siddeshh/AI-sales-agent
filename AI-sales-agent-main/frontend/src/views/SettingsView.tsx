@@ -68,7 +68,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           Demo Data State
         </div>
         <p style={{ fontSize: '14px', color: 'var(--muted-foreground)', marginBottom: '14px' }}>
-          Delete all data and reload the Celestial Wear demo seed: 12 retail leads, 4 knowledge documents, 5 conversations, 3 meetings and follow-ups.
+          Delete all data and reload the Celestial Wear demo seed: 12 retail leads, 3 knowledge documents (the bulk price list is uploaded in demo step 1), 5 conversations, 3 meetings and follow-ups.
         </p>
 
         <button

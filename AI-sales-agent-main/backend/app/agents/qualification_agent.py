@@ -197,16 +197,17 @@ class LeadQualificationAgent:
         add("Source Quality", pts, why, "Fit")
 
         # BANT evidence: from the conversation (LLM) if available, else the lead form.
-        # Form answers count as "partial" only: BANT is confirmed by what the customer says.
+        # What the lead stated on the form (budget, products, deadline, own job title) counts as confirmed;
+        # conversation evidence overrides it once the LLM has read the chat.
         if lead.bant_json:
             bant = json.loads(lead.bant_json)
             confirmed = sum(1 for v in bant.values() if v.get("status") == "confirmed")
             partial = sum(1 for v in bant.values() if v.get("status") == "partial")
             source = "conversation"
         else:
-            confirmed = 0
-            partial = sum(bool(x) for x in [lead.budget_qualified, lead.authority_qualified,
-                                            lead.need_qualified, lead.timeline_qualified])
+            confirmed = sum(bool(x) for x in [lead.budget_qualified, lead.authority_qualified,
+                                              lead.need_qualified, lead.timeline_qualified])
+            partial = 0
             source = "lead form"
         bonus = bant_bonus(confirmed, partial)
         add("BANT Evidence Bonus", bonus,

@@ -5,6 +5,7 @@ so the demo keeps working with no key or no network.
 """
 import json
 import logging
+import time
 from typing import List, Dict, Optional
 
 import httpx
@@ -20,6 +21,10 @@ PROVIDERS = {
 }
 TIMEOUT_SECONDS = 20
 ATTEMPTS = 2  # first try + one retry
+# After a failed call, skip the LLM for this long so an offline laptop answers instantly from the rules
+# instead of waiting on timeouts for every message (up to 3 LLM calls per message).
+COOLDOWN_SECONDS = 60
+_down_until = 0.0
 
 
 class LLMUnavailable(Exception):
@@ -43,6 +48,10 @@ def chat(system: str, messages: List[Dict[str, str]], json_mode: bool = False) -
         log.warning("LLM path: rules fallback (LLM_PROVIDER=%s, no usable key)", settings.LLM_PROVIDER)
         raise LLMUnavailable("no provider configured")
 
+    global _down_until
+    if time.monotonic() < _down_until:
+        raise LLMUnavailable(f"{name} unreachable recently; using rules for {int(_down_until - time.monotonic())}s more")
+
     cfg = PROVIDERS[name]
     model = settings.LLM_MODEL or cfg["model"]
     headers = {"Authorization": f"Bearer {getattr(settings, cfg['key'])}"} if cfg["key"] else {}
@@ -65,7 +74,10 @@ def chat(system: str, messages: List[Dict[str, str]], json_mode: bool = False) -
         except Exception as e:  # network, HTTP status, or malformed body
             last_err = e
             log.warning("LLM call failed on %s attempt %d: %s", name, attempt, e)
-    log.warning("LLM path: rules fallback after %d failed attempts", ATTEMPTS)
+            if isinstance(e, httpx.ConnectError):
+                break  # no network / DNS: retrying cannot help
+    _down_until = time.monotonic() + COOLDOWN_SECONDS
+    log.warning("LLM path: rules fallback; skipping %s for %ds", name, COOLDOWN_SECONDS)
     raise LLMUnavailable(str(last_err))
 
 
