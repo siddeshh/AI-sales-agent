@@ -23,32 +23,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenLead,
 }) => {
+  // Zeros until the API answers: never show made-up numbers.
   const kpis = metrics?.kpis || {
-    total_leads: 3,
-    new_leads: 0,
-    hot_leads: 2,
-    qualified_leads: 2,
-    meetings_scheduled: 1,
-    conversion_rate: 33.3,
-    pipeline_value_inr: 25500000,
-    ai_conversations_count: 4,
-    active_followups: 2,
+    total_leads: 0, new_leads: 0, hot_leads: 0, qualified_leads: 0, meetings_scheduled: 0,
+    conversion_rate: 0, pipeline_value_inr: 0, ai_conversations_count: 0, active_followups: 0,
   };
 
-  const formatCurrency = (val: number) => {
-    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
-    if (val >= 100000) return `₹${(val / 100000).toFixed(1)} L`;
-    return `₹${val.toLocaleString()}`;
-  };
+  const formatCurrency = (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}`;
 
-  const funnelSteps = metrics?.funnel || [
-    { stage: 'New', count: 3, percentage: 100 },
-    { stage: 'Contacted', count: 3, percentage: 100 },
-    { stage: 'Engaged', count: 2, percentage: 67 },
-    { stage: 'Qualified', count: 2, percentage: 67 },
-    { stage: 'Meeting', count: 1, percentage: 33 },
-    { stage: 'Won', count: 0, percentage: 0 },
-  ];
+  const funnelSteps = metrics?.funnel || [];
+  const pct = (n: number) => (kpis.total_leads ? Math.round((n / kpis.total_leads) * 100) : 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -61,7 +45,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '12px', color: '#64748b', background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 10px', borderRadius: '6px' }}>
-            Oct 8, 2026 • Real Estate Pod
+            {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • Celestial Wear
           </span>
           <button onClick={() => onNavigate('leads')} className="btn btn-primary btn-sm">
             <Plus size={14} />
@@ -82,9 +66,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
             {kpis.total_leads}
           </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <ArrowUpRight size={13} />
-            <span>+14.2% vs last month</span>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>
+            {kpis.new_leads} new, {kpis.hot_leads} hot
           </div>
         </div>
 
@@ -94,9 +77,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
             {kpis.qualified_leads}
           </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <ArrowUpRight size={13} />
-            <span>67% BANT verified</span>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>
+            {pct(kpis.qualified_leads)}% of leads meet BANT
           </div>
         </div>
 
@@ -107,7 +89,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {kpis.meetings_scheduled}
           </div>
           <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Site visits &amp; calls
+            Demo calls &amp; showroom visits
           </div>
         </div>
 
@@ -117,9 +99,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
             {formatCurrency(kpis.pipeline_value_inr)}
           </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <ArrowUpRight size={13} />
-            <span>High conversion tier</span>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>
+            Stated budgets of open leads
           </div>
         </div>
 
@@ -130,7 +111,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {kpis.conversion_rate}%
           </div>
           <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Target: 25.0%
+            Meetings / leads
           </div>
         </div>
       </div>

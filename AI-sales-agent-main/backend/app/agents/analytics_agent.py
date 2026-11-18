@@ -25,9 +25,9 @@ class AnalyticsAgent:
 
         # Calculate pipeline value
         leads_list = db.query(Lead).all()
-        pipeline_value = sum(l.budget_numeric for l in leads_list if l.stage not in ["Lost"]) or 42000000.0
+        pipeline_value = sum(l.budget_numeric or 0 for l in leads_list if l.stage not in ["Lost"])
 
-        conversion_rate = round((meetings_scheduled / total_leads * 100), 1) if total_leads > 0 else 24.5
+        conversion_rate = round((meetings_scheduled / total_leads * 100), 1) if total_leads > 0 else 0.0
 
         # Funnel stage counts
         funnel_stages = ["New", "Contacted", "Engaged", "Qualified", "Meeting Scheduled", "Won"]
@@ -48,36 +48,44 @@ class AnalyticsAgent:
             "Cold (0-30)": db.query(Lead).filter(Lead.score_category == "Cold").count(),
         }
 
-        # AI Sales Insights
-        insights: List[Dict[str, Any]] = [
-            {
-                "id": "ins-1",
-                "type": "opportunity",
-                "title": f"{hot_leads} High-Intent Hot Leads Ready for Immediate Closing",
-                "description": "Prospects with scores > 80 have confirmed BANT criteria. Engaging within 15 minutes of inquiry yields a 3.4x higher site visit conversion.",
-                "impact": "High Pipeline Acceleration",
-                "action_text": "Trigger Automated VIP Site Visit Invites",
-                "action_type": "schedule_vip"
-            },
-            {
-                "id": "ins-2",
-                "type": "trend",
-                "title": "Price Objections Top Customer Friction Point (68% of Inquiries)",
-                "description": "Buyers are hesitating on total outflow. Deploying the 10:90 Developer Subvention financing script resolved 79% of price concerns.",
-                "impact": "Boosts Deal Velocity",
-                "action_text": "Activate Subvention Objection Playbook",
-                "action_type": "activate_playbook"
-            },
-            {
-                "id": "ins-3",
-                "type": "recommendation",
-                "title": "Website Form Inbounds Yield Highest Qualification Rate (84%)",
-                "description": "Website organic inquiries convert 2.1x better than third-party property aggregators. Recommended: allocate 30% more budget to direct digital landing pages.",
-                "impact": "Higher ROI per Lead",
-                "action_text": "Review Lead Source Performance",
-                "action_type": "view_sources"
-            }
-        ]
+        # Objection breakdown from recorded objections
+        objection_rows = db.query(ObjectionRecord.objection_type, func.count(ObjectionRecord.id))             .group_by(ObjectionRecord.objection_type).all()
+        total_obj = sum(c for _, c in objection_rows)
+        resolved = dict(db.query(ObjectionRecord.objection_type, func.count(ObjectionRecord.id))
+                        .filter(ObjectionRecord.resolution_status.in_(["Addressed", "Resolved"]))
+                        .group_by(ObjectionRecord.objection_type).all())
+        objections = sorted([
+            {"type": t, "count": c, "percentage": round(c / total_obj * 100, 1),
+             "addressed": resolved.get(t, 0)}
+            for t, c in objection_rows], key=lambda x: -x["count"])
+
+        # Insights computed from the data above (no fixed claims)
+        insights: List[Dict[str, Any]] = []
+        if hot_leads:
+            insights.append({
+                "id": "ins-hot", "type": "opportunity",
+                "title": f"{hot_leads} hot lead{'s' if hot_leads != 1 else ''} (score 81+)",
+                "description": "Highest-scoring leads by order value, urgency, buyer type, engagement, source and BANT.",
+                "impact": "Prioritise today", "action_text": "Open leads", "action_type": "view_leads"})
+        if objections:
+            top = objections[0]
+            tied = len(objections) > 1 and objections[1]["count"] == top["count"]
+            insights.append({
+                "id": "ins-objection", "type": "trend",
+                "title": (f"{total_obj} objections recorded across {len(objections)} types, no single top type" if tied
+                          else f"Top objection: {top['type']} ({top['percentage']}% of {total_obj} recorded)"),
+                "description": f"{top['addressed']} of {top['count']} were answered by the Objection agent.",
+                "impact": "Review playbook", "action_text": "Open conversations", "action_type": "view_conversations"})
+        by_source: Dict[str, List[int]] = {}
+        for l in leads_list:
+            by_source.setdefault(l.source or "Unknown", []).append(l.lead_score or 0)
+        if by_source:
+            src, scores = max(by_source.items(), key=lambda kv: sum(kv[1]) / len(kv[1]))
+            insights.append({
+                "id": "ins-source", "type": "recommendation",
+                "title": f"{src} leads score highest on average ({sum(scores) / len(scores):.0f}/100, {len(scores)} leads)",
+                "description": "Average lead score per source across all leads in the pipeline.",
+                "impact": "Source quality", "action_text": "Review lead sources", "action_type": "view_sources"})
 
         return {
             "agent_name": cls.AGENT_NAME,
@@ -94,5 +102,6 @@ class AnalyticsAgent:
             },
             "funnel": funnel_data,
             "score_distribution": score_distribution,
+            "objections": objections,
             "insights": insights
         }

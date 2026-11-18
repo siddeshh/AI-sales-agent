@@ -15,10 +15,10 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
 
   // Form State
   const [selectedLeadId, setSelectedLeadId] = useState<number>(leads[0]?.id || 1);
-  const [meetingType, setMeetingType] = useState('site_visit');
+  const [meetingType, setMeetingType] = useState('product_demo');
   const [selectedSlotIso, setSelectedSlotIso] = useState('');
-  const [meetingLocation, setMeetingLocation] = useState('Skyline Experience Centre, Hinjawadi Pune');
-  const [meetingNotes, setMeetingNotes] = useState('VIP Floor Plan Inspection');
+  const [meetingLocation, setMeetingLocation] = useState('Google Meet');
+  const [meetingNotes, setMeetingNotes] = useState('');
   const [isBooking, setIsBooking] = useState(false);
 
   const loadData = async () => {
@@ -45,16 +45,16 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
     setIsBooking(true);
     try {
       const targetLead = leads.find((l) => l.id === selectedLeadId);
-      const title = meetingType === 'site_visit'
-        ? `Site Visit: ${targetLead?.name || 'Prospect'}`
-        : `Product Demo: ${targetLead?.name || 'Prospect'}`;
+      const title = meetingType === 'showroom_visit'
+        ? `Showroom visit: ${targetLead?.name || 'Prospect'}`
+        : `Product demo / sample review call: ${targetLead?.name || 'Prospect'}`;
 
       await api.scheduleMeeting({
         lead_id: selectedLeadId,
         title,
         meeting_type: meetingType,
         scheduled_time: selectedSlotIso,
-        duration_minutes: meetingType === 'site_visit' ? 60 : 30,
+        duration_minutes: meetingType === 'showroom_visit' ? 60 : 30,
         location_or_link: meetingLocation,
         notes: meetingNotes,
       });
@@ -75,7 +75,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2>Meetings &amp; Appointments</h2>
-          <p>Calendar availability and VIP site visit bookings.</p>
+          <p>Product demo / sample review calls and showroom visits. Slots follow showroom hours; no external calendar is connected.</p>
         </div>
 
         <button onClick={() => setIsBookModalOpen(true)} className="btn btn-primary btn-sm">
@@ -220,13 +220,14 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({ leads, onRefreshLead
                   </label>
                   <select
                     value={meetingType}
-                    onChange={(e) => setMeetingType(e.target.value)}
+                    onChange={(e) => {
+                      setMeetingType(e.target.value);
+                      setMeetingLocation(e.target.value === 'showroom_visit' ? 'Celestial Wear Studio, Indiranagar, Bengaluru' : 'Google Meet');
+                    }}
                     className="form-select"
                   >
-                    <option value="site_visit">Site Visit</option>
-                    <option value="sales_call">Sales Call</option>
-                    <option value="product_demo">Product Demo</option>
-                    <option value="consultation">Consultation</option>
+                    <option value="product_demo">Product demo / sample review call</option>
+                    <option value="showroom_visit">Showroom visit</option>
                   </select>
                 </div>
 

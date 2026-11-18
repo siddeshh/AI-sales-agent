@@ -12,6 +12,6 @@ The workforce divides sales lifecycle responsibilities among 11 purpose-built ag
 | **F. Objection Handling Agent** | `app/agents/objection_agent.py` | Detection of price, timing, competitor, and trust objections; deploys Value Reframing and Feel-Felt-Found techniques. |
 | **G. Voice Sales Agent** | `app/agents/voice_agent.py` | Telephony dialogue, speech turn management, natural oral cadence, audio visualizer telemetry, and automated post-call CRM notes. |
 | **H. Follow-up Agent** | `app/agents/followup_agent.py` | Cadence management (Day 0, Day 2, Day 5, Day 10 touches); automated cadence freeze upon customer response. |
-| **I. Scheduling Agent** | `app/agents/scheduling_agent.py` | Calendar availability checks within business hours (10 AM - 6 PM IST); booking VIP Site Visits, Demos, and Consultations. |
+| **I. Scheduling Agent** | `app/agents/scheduling_agent.py` | Proposes slots in showroom hours (11 AM - 7 PM IST, Mon-Sat); books product demo / sample review calls and showroom visitss. |
 | **J. CRM Agent** | `app/agents/crm_agent.py` | Automatic stage transitions across 9 stages, updating Next Best Action recommendations, and auditable event logging. |
 | **K. Analytics Agent** | `app/agents/analytics_agent.py` | Funnel drop-off analytics, score distribution monitoring, objection frequency clustering, and AI executive insights. |

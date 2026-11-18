@@ -31,6 +31,14 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
   if (!isOpen || !lead) return null;
 
+  const breakdown = (() => {
+    try {
+      return lead.score_breakdown_json ? JSON.parse(lead.score_breakdown_json) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const handleRunAgent = async (agentType: 'research' | 'score' | 'qualify') => {
     setIsProcessing(true);
     try {
@@ -330,7 +338,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         Lead Score: {lead.lead_score}/100
                       </div>
                       <div style={{ fontSize: '12px', color: '#64748b' }}>
-                        Conversion probability: {Math.round(lead.conversion_probability * 100)}%
+                        Tier: {lead.score_category} (Cold 0-30, Warm 31-60, Qualified 61-80, Hot 81-100)
                       </div>
                     </div>
 
@@ -344,14 +352,32 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     </button>
                   </div>
 
+                  {breakdown && (
+                    <div style={{ padding: '12px 14px', borderRadius: '6px', background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '12px', color: '#1e3a8a', lineHeight: 1.6 }}>
+                      <div style={{ fontWeight: 600, marginBottom: '4px' }}>How this score is calculated</div>
+                      <div style={{ fontFamily: 'monospace' }}>final = round(0.7 × base) + BANT bonus</div>
+                      <div style={{ fontFamily: 'monospace' }}>
+                        base = {breakdown.profile_points} profile points / {breakdown.profile_max} × 100 = {breakdown.base}
+                      </div>
+                      <div style={{ fontFamily: 'monospace' }}>
+                        BANT bonus = min(30, round(30 × ({breakdown.bant_confirmed}/4)^1.5 + 1.5 × {breakdown.bant_partial})) = {breakdown.bant_bonus}
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                        final = round(0.7 × {breakdown.base}) + {breakdown.bant_bonus} = {breakdown.weighted_base} + {breakdown.bant_bonus} = {breakdown.final}
+                      </div>
+                      <div style={{ marginTop: '6px', color: '#475569' }}>
+                        The base works like a model score from the lead's profile. The BANT bonus grows faster with each
+                        slot confirmed in conversation (0, 4, 11, 19, 30 points for 0–4 confirmed), so confirmed evidence
+                        outweighs the profile once the customer states it. BANT source: {breakdown.bant_source}.
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {(lead.score_factors || [
-                      { id: 1, factor_name: 'High Budget Match', score_impact: 25, explanation: 'Budget of ₹80L matches prime 2 BHK inventory', category: 'Budget' },
-                      { id: 2, factor_name: 'Urgent Timeline', score_impact: 20, explanation: '30-day purchasing timeline signifies imminent buying readiness', category: 'Timeline' },
-                      { id: 3, factor_name: 'Specific Requirements', score_impact: 15, explanation: 'Explicit floor plan preferences (2 BHK East-facing)', category: 'Need' },
-                      { id: 4, factor_name: 'Two-Way Engagement', score_impact: 15, explanation: 'Responded positively to outbound introduction', category: 'Engagement' },
-                      { id: 5, factor_name: 'High-Intent Inbound Source', score_impact: 12, explanation: 'Inbound direct website form inquiry with verified phone', category: 'Fit' },
-                    ]).map((factor) => (
+                    {(lead.score_factors || []).length === 0 && (
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>No score factors yet. Click Recalculate.</div>
+                    )}
+                    {(lead.score_factors || []).map((factor) => (
                       <div
                         key={factor.id}
                         style={{
@@ -367,6 +393,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         <div>
                           <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
                             {factor.factor_name}
+                            <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8', marginLeft: '6px' }}>
+                              {factor.category === 'Qualification' ? 'added to final score' : 'profile points'}
+                            </span>
                           </div>
                           <div style={{ fontSize: '12px', color: '#64748b' }}>
                             {factor.explanation}
@@ -443,10 +472,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 marginBottom: '10px',
               }}>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '4px' }}>
-                  {lead.next_best_action || 'Schedule Property Demo'}
+                  {lead.next_best_action || 'No next action yet'}
                 </div>
                 <div style={{ fontSize: '12px', color: '#15803d', lineHeight: 1.4 }}>
-                  {lead.next_best_action_reason || 'Prospect has confirmed budget and timeline; recommended for site tour.'}
+                  {lead.next_best_action_reason || ''}
                 </div>
               </div>
 

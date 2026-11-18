@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Any, List, Literal, Optional
 from pydantic import BaseModel, ValidationError
 from app.models.entities import Lead
+from app.agents.lead_scoring_agent import timeline_days
 from app.services.llm import chat, parse_json, LLMUnavailable
 
 log = logging.getLogger("nova.llm")
@@ -19,44 +20,45 @@ class QualificationAgent:
     """
     AGENT_NAME = "Qualification Agent"
 
+    DECISION_TITLES = ["owner", "founder", "proprietor", "director", "head", "manager", "partner", "procurement",
+                       "secretary", "lead", "buyer", "ceo"]
+
     @classmethod
     def evaluate_bant(cls, lead: Lead, conversation_history: list = None) -> Dict[str, Any]:
-        # 1. Budget check
-        budget_str = (lead.budget or "").lower()
-        budget_ok = lead.budget_numeric >= 5000000 or "lakh" in budget_str or "crore" in budget_str
+        """Intake checklist from the lead form only; the conversation-based LLM version replaces it later."""
+        # Budget: a stated order value
+        budget_ok = (lead.budget_numeric or 0) > 0
 
-        # 2. Authority check (Self-buyer, head of household, executive)
+        # Authority: job title suggests they sign off purchases
         job_title = (lead.job_title or "").lower()
-        authority_ok = True  # In residential, inquiry maker is prime decision maker / co-signer
-        if "student" in job_title or "intern" in job_title:
-            authority_ok = False
+        authority_ok = any(t in job_title for t in cls.DECISION_TITLES)
 
-        # 3. Need check (Concrete requirement defined)
-        req = (lead.requirements or "").lower()
-        need_ok = len(req) >= 5 and any(k in req for k in ["bhk", "villa", "apartment", "plot", "sq", "commercial", "home"])
+        # Need: a stated product requirement or quantity
+        need_ok = bool(lead.order_quantity) or len((lead.requirements or "").strip()) >= 5
 
-        # 4. Timeline check
-        timeline = (lead.timeline or "").lower()
-        timeline_ok = any(t in timeline for t in ["immediate", "30", "60", "2 month", "month", "ready"])
+        # Timeline: a deadline within ~2 months
+        days = timeline_days(lead.timeline)
+        timeline_ok = days is not None and days <= 60
 
         bant_met_count = sum([budget_ok, authority_ok, need_ok, timeline_ok])
 
         if bant_met_count >= 4:
             status = "Qualified"
             recommended_stage = "Qualified"
-            reason = "BANT Confirmed: Verified budget capacity, prime decision-maker authority, explicit floor plan need, and near-term purchase timeline."
+            reason = "All four BANT criteria met on the lead form: order value, decision-maker title, product need, deadline within 60 days."
         elif bant_met_count >= 2:
             status = "Partially Qualified"
             recommended_stage = "Engaged"
             missing = []
-            if not budget_ok: missing.append("Budget clarification")
-            if not need_ok: missing.append("Property size preference")
-            if not timeline_ok: missing.append("Purchase timeline")
+            if not budget_ok: missing.append("order value")
+            if not authority_ok: missing.append("who approves the purchase")
+            if not need_ok: missing.append("products and quantity")
+            if not timeline_ok: missing.append("delivery deadline")
             reason = f"Partially qualified. Additional discovery needed on: {', '.join(missing)}."
         else:
             status = "Unqualified"
             recommended_stage = "Nurture"
-            reason = "Unqualified: Prospect requires long-term educational nurture."
+            reason = "Fewer than two BANT criteria met; nurture until needs are clearer."
 
         return {
             "agent_name": cls.AGENT_NAME,

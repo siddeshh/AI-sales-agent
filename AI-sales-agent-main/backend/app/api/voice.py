@@ -21,11 +21,11 @@ def initiate_call(payload: VoiceCallInitiate, db: Session = Depends(get_db)):
     call = CallSession(
         lead_id=lead.id,
         caller_name=lead.name,
-        phone_number=payload.phone_number or lead.phone or "+91 98200 00000",
+        phone_number=payload.phone_number or lead.phone,
         status="in_progress",
         duration_seconds=0,
         live_transcript=json.dumps([
-            {"speaker": "ai", "text": f"Connecting call with {lead.name}... Connected. Hello {lead.name.split()[0]}! This is Maya from Skyline Living."}
+            {"speaker": "ai", "text": VoiceSalesAgent.introduction(lead.name)}
         ]),
         sentiment="Neutral",
         lead_score_after=lead.lead_score
@@ -40,7 +40,7 @@ def initiate_call(payload: VoiceCallInitiate, db: Session = Depends(get_db)):
         action_type="call_start",
         lead_id=lead.id,
         lead_name=lead.name,
-        description=f"Outbound AI Voice Call initiated with {lead.name} ({lead.phone}).",
+        description=f"Browser voice session started with {lead.name} (demo mode: no phone call is placed).",
         status="success"
     )
     db.add(log)
@@ -72,7 +72,7 @@ def process_voice_call_turn(payload: VoiceCallTurnRequest, db: Session = Depends
 
     # Update call record
     call.live_transcript = json.dumps(transcript_list)
-    call.duration_seconds += 18 # simulate time per turn
+    call.duration_seconds = int((datetime.utcnow() - call.created_at).total_seconds())
     call.sentiment = turn_res["sentiment"]
     db.commit()
 
@@ -92,8 +92,7 @@ def end_call(call_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Call session not found")
 
     call.status = "completed"
-    if call.duration_seconds == 0:
-        call.duration_seconds = 74
+    call.duration_seconds = int((datetime.utcnow() - call.created_at).total_seconds())
 
     transcript_list = []
     if call.live_transcript:
@@ -110,12 +109,11 @@ def end_call(call_id: int, db: Session = Depends(get_db)):
     # Update lead score & CRM state
     lead = db.query(Lead).filter(Lead.id == call.lead_id).first()
     if lead:
-        lead.lead_score = min(100, lead.lead_score + summary_res["lead_score_boost"])
         call.lead_score_after = lead.lead_score
         CRMAgent.update_lead_state(
             lead, db,
             stage="Engaged" if lead.stage in ["New", "Contacted"] else lead.stage,
-            next_action="Send WhatsApp Site Location Pin & Follow-up",
+            next_action="Send quote or meeting confirmation after the call",
             notes=summary_res["summary"]
         )
 

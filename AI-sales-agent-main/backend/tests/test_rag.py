@@ -28,20 +28,20 @@ def test_chunker():
 
 
 def test_grounding_check():
-    src = "2 BHK units start at ₹78 lakh. Maintenance is ₹3.50 per sq.ft. Possession December 2026. Up to 90% loan."
-    assert ungrounded_numbers("2 BHK from ₹78 lakh, 90% loan, maintenance 3.5", src) == set()
-    assert ungrounded_numbers("We give a 15% discount within 7 days", src) == {"15", "7"}
-    assert ungrounded_numbers("Carpet area 1,050 sq.ft", "1050 to 1,220 sq.ft") == set()
+    src = "Classic Crew Tee: 180 GSM, MRP ₹549, 50+ ₹467. Express production 5-7 business days, 12% surcharge. DTF ₹90.50."
+    assert ungrounded_numbers("180 GSM tee at ₹467 from 50 pieces, express in 5-7 days for 12%, DTF 90.5", src) == set()
+    assert ungrounded_numbers("We give a 15% discount within 3 days", src) == {"15", "3"}
+    assert ungrounded_numbers("An order of 1,050 pieces", "1050 to 1,220 pieces") == set()
 
 
 def test_retrieval():
     db = SessionLocal()
-    hit = KnowledgeRAGAgent.retrieve("How much does a 2 BHK apartment cost?", db)
+    hit = KnowledgeRAGAgent.retrieve("What is the bulk price for 250 hoodies?", db)
     miss = KnowledgeRAGAgent.retrieve("Do you sell gaming laptops with RTX graphics cards?", db)
     db.close()
     print("price question top:", hit["hits"][0]["document_title"], hit["hits"][0]["score"])
     print("off-topic top score:", miss["top_score"])
-    assert hit["chunks"] and "78 lakh" in hit["chunks"][0]["content"]
+    assert hit["chunks"] and "₹1,151" in hit["chunks"][0]["content"]
     assert not miss["chunks"], "off-topic question must not pass the threshold"
 
 
@@ -50,13 +50,13 @@ def test_grounding_failure_creates_followup():
 
     def fake_chat(system, messages, json_mode=False):
         calls.append(1)
-        return "Sure, we can offer a 12% discount if you book within 5 days."  # numbers not in any source
+        return "Sure, we can offer a 33% discount if you pay within 19 hours."  # numbers not in any source
 
     rag_agent.chat, rag_agent.provider_label = fake_chat, lambda: "stub/llm"
     db = SessionLocal()
     lead = db.query(Lead).first()
     before = db.query(FollowUp).filter(FollowUp.lead_id == lead.id).count()
-    res = KnowledgeRAGAgent.answer_question("What is the price of a 2 BHK?", db, lead=lead)
+    res = KnowledgeRAGAgent.answer_question("What is the bulk price for 250 hoodies?", db, lead=lead)
     db.commit()
     after = db.query(FollowUp).filter(FollowUp.lead_id == lead.id).count()
     db.close()

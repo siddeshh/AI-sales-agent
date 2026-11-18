@@ -15,12 +15,12 @@ export const KnowledgeBaseView: React.FC = () => {
   // Upload Form
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('Brochure');
+  const [uploadCategory, setUploadCategory] = useState('Catalogue');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   // RAG Query Tester
-  const [ragQuery, setRagQuery] = useState('What are the 2 BHK prices and MahaRERA possession date?');
+  const [ragQuery, setRagQuery] = useState('What is the bulk price for 250 French Terry Hoodies?');
   const [ragResult, setRagResult] = useState<any>(null);
   const [ragError, setRagError] = useState('');
   const [isQuerying, setIsQuerying] = useState(false);
@@ -274,7 +274,7 @@ export const KnowledgeBaseView: React.FC = () => {
                   required
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
-                  placeholder="e.g. Skyline Greens Brochure 2026"
+                  placeholder="e.g. Bulk Order Price List 2026"
                   className="form-input"
                 />
               </div>
@@ -288,10 +288,10 @@ export const KnowledgeBaseView: React.FC = () => {
                   onChange={(e) => setUploadCategory(e.target.value)}
                   className="form-select"
                 >
-                  <option value="Brochure">Brochure</option>
+                  <option value="Catalogue">Catalogue</option>
                   <option value="Pricing">Pricing</option>
+                  <option value="Policy">Policy</option>
                   <option value="FAQ">FAQ</option>
-                  <option value="Policy">Legal &amp; Approvals</option>
                 </select>
               </div>
 

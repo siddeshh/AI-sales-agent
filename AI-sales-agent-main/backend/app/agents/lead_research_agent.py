@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from app.models.entities import Lead
+from app.agents.lead_scoring_agent import timeline_days
 
 class LeadResearchAgent:
     """
@@ -12,36 +13,38 @@ class LeadResearchAgent:
     """
     AGENT_NAME = "Lead Research Agent"
 
+    PERSONAS = {
+        "wholesale": ("Wholesale buyer (boutique / reseller)",
+                      "Healthy margin after slab pricing, consistent quality across reorders, fast restocking of bestsellers.",
+                      "Unsold stock risk, MOQ too high for testing new styles, size-set mix, delivery delays before a sale."),
+        "corporate": ("Corporate / institutional buyer",
+                      "Branded merchandise that staff or students actually wear, one invoice, on-time delivery for the event.",
+                      "Hard event deadline, logo quality (print vs embroidery), approvals from finance, size collection."),
+        "individual": ("Individual buyer",
+                       "Personal or small-group order, good fit and fabric, easy returns.",
+                       "Small quantity below bulk MOQ, price sensitivity, uncertainty about sizing."),
+    }
+
     @classmethod
     def research_lead(cls, lead: Lead) -> Dict[str, Any]:
-        industry = lead.industry or "real_estate"
-        name = lead.name or "Prospect"
-        budget = lead.budget or "₹80 lakh"
-        location = lead.location or "Pune"
-        req = lead.requirements or "2 BHK residential apartment"
-        timeline = lead.timeline or "Within 30-60 days"
-
-        # Determine buyer persona based on parameters
-        if "crore" in budget.lower() or lead.budget_numeric >= 10000000:
-            persona_type = "High Net-Worth / Luxury Investor"
-            key_motivations = "Capital appreciation, luxury amenities, prestigious address, verified title."
-            pain_points = "Risk of delayed construction, unverified builder credentials, low rental yield."
-        elif "80" in budget or "75" in budget or "85" in budget:
-            persona_type = "Mid-Senior Tech Professional / First-time Homebuyer"
-            key_motivations = "Proximity to IT hubs (Hinjawadi / Magarpatta), kid-friendly gated township, easy home loan approvals."
-            pain_points = "High EMI burden, traffic congestion during commute, hidden parking/maintenance costs."
-        else:
-            persona_type = "Value-Conscious Family Buyer"
-            key_motivations = "Affordable pricing, good connectivity, safe neighborhood, reliable builder track record."
-            pain_points = "Strict budget limitations, delayed possession dates, extra charges."
-
-        summary = (
-            f"Prospect {name} is identified as a '{persona_type}' seeking {req} in {location} "
-            f"with an allocated capital budget of {budget}. Timeline is firm ({timeline}). "
-            f"Motivations: {key_motivations}"
-        )
-
-        buying_intent = "High" if ("30" in timeline or "immediate" in timeline.lower()) else "Medium"
+        """Rule-based profile from the lead form only; it does not look anything up externally."""
+        persona_type, key_motivations, pain_points = cls.PERSONAS.get(
+            (lead.buyer_type or "").lower(),
+            ("Unclassified buyer", "Not enough information yet.", "Unknown until the first conversation."))
+        days = timeline_days(lead.timeline)
+        parts = [f"{lead.name or 'Prospect'}"]
+        if lead.job_title or lead.company:
+            parts.append(f"({', '.join(x for x in [lead.job_title, lead.company] if x)})")
+        parts.append(f"is a '{persona_type}'")
+        if lead.location:
+            parts.append(f"in {lead.location}")
+        summary = " ".join(parts) + "."
+        if lead.requirements or lead.order_quantity:
+            summary += f" Wants: {lead.requirements or ''}{f' ({lead.order_quantity} units)' if lead.order_quantity else ''}."
+        if lead.budget:
+            summary += f" Stated budget: {lead.budget}."
+        if lead.timeline:
+            summary += f" Timeline: {lead.timeline}."
 
         return {
             "agent_name": cls.AGENT_NAME,
@@ -49,6 +52,6 @@ class LeadResearchAgent:
             "persona_type": persona_type,
             "pain_points": pain_points,
             "key_motivations": key_motivations,
-            "buying_intent": buying_intent,
-            "next_best_action": "Send Personalized Property Introduction & Schedule Discovery Site Visit"
+            "buying_intent": "High" if days is not None and days <= 21 else "Medium" if days is not None else "Low",
+            "next_best_action": "Send catalogue and bulk price list, then offer a sample review call",
         }

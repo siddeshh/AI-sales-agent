@@ -7,10 +7,10 @@ class FollowUpAgent:
     Agent H: Follow-up Agent
     Responsibilities:
     - Automated Cadence Management:
-        * Day 0: Initial greeting & floor plan share
-        * Day 2: Value-add follow-up (Amenities & Infrastructure video)
-        * Day 5: Financing & payment milestone guide
-        * Day 10: Final courtesy touchpoint before re-routing to long nurture
+        * Day 0: Introduction with catalogue and bulk price list
+        * Day 2: Customisation options (printing, embroidery, mockups)
+        * Day 5: Sample review call / showroom visit offer
+        * Day 10: Final check-in before long nurture
     - Inactivity detection & automatic stop on prospect response
     - Contact-later rescheduling
     """
@@ -18,24 +18,24 @@ class FollowUpAgent:
 
     CADENCE_TEMPLATES = {
         0: {
-            "title": "Day 0: Initial Outreach & Project Overview",
+            "title": "Day 0: Introduction with catalogue and price list",
             "channel": "whatsapp",
-            "content": "Hi {name}! Attached is the complete project brochure and carpet area plan for Skyline Greens Pune. Let me know if you'd like to see specific 2 BHK floor options!"
+            "content": "Hi {name}! Thanks for your interest in Celestial Wear. Here are our product catalogue and bulk price list. Which products and quantities are you considering?"
         },
         2: {
-            "title": "Day 2: Amenities & Township Lifestyle Video",
+            "title": "Day 2: Customisation options",
             "channel": "whatsapp",
-            "content": "Hi {name}! Following up on your property search — here is a 2-minute 3D walkthrough showing our 25,000 sq.ft clubhouse and Olympic swimming pool. Would Saturday work for a site visit?"
+            "content": "Hi {name}, quick follow-up: we can add screen printing, DTF or embroidery to bulk orders and share a digital mockup within 48 hours. Want to send us your logo?"
         },
         5: {
-            "title": "Day 5: Home Loan & Subvention Financing Guide",
+            "title": "Day 5: Sample review call offer",
             "channel": "email",
-            "content": "Dear {name}, we have just partnered with HDFC & SBI for an exclusive 10:90 subvention scheme on our 2 BHK towers. Here is the full financial breakdown to review at your convenience."
+            "content": "Dear {name}, if it helps you decide, we can do a short sample review call or you can visit our Bengaluru showroom to see the fabrics. Let me know a time that suits you."
         },
         10: {
-            "title": "Day 10: Final Courtesy Check-in",
+            "title": "Day 10: Final check-in",
             "channel": "whatsapp",
-            "content": "Hi {name}, I wanted to do one last check-in. If your property search is on pause, no problem at all! Whenever you are ready to explore, we are here to assist."
+            "content": "Hi {name}, one last check-in from Celestial Wear. If now isn't the right time, no problem at all. We're here whenever you need apparel in bulk."
         }
     }
 

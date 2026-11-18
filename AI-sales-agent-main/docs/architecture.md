@@ -62,15 +62,15 @@ The orchestrator maintains an auditable execution context across every conversat
 {
   "lead_id": 1,
   "lead_name": "Rahul Sharma",
-  "intent": "Pricing Inquiry / Site Visit",
+  "intent": "question",
   "sentiment": "Positive",
-  "budget": "₹80 lakh",
+  "budget": "₹3,50,000",
   "timeline": "Within 30 days",
   "qualification_status": "Qualified",
   "lead_score": 87,
   "score_category": "Hot",
   "active_objections": ["Price"],
-  "next_best_action": "Schedule VIP Site Visit for Saturday 11 AM",
+  "next_best_action": "Run sample review call and confirm express production",
   "human_handoff_triggered": false
 }
 ```
@@ -83,4 +83,4 @@ The AI Sales Agent operates with explicit humility and guardrails. A human sales
 1. **Direct Customer Request**: Keywords like *"talk to human"*, *"call manager"*, *"real person"* are detected.
 2. **Low RAG Grounding Confidence**: If retrieved context falls below similarity threshold ($\text{score} < 0.28$), the system states information is unverified and flags a human specialist.
 3. **Severe Sentiment Friction**: Hostile, angry, or persistent negative sentiment.
-4. **Ultra High-Value Deals**: Deals above custom enterprise thresholds (e.g. $> ₹5\text{ Crore}$).
+4. **Ultra High-Value Deals**: Deals above custom enterprise thresholds (e.g. above ₹10,00,000).

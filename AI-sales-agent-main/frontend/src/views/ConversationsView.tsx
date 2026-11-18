@@ -93,11 +93,12 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
   };
 
   const PRESET_PROMPTS = [
-    'I am looking for a 2 BHK apartment in Pune under 80 lakh.',
-    '₹80 lakh is slightly on the higher side of my budget. Are there discounts?',
-    'What amenities are included in Skyline Greens?',
-    'What is the MahaRERA registration number and possession date?',
-    'Can I book a VIP site visit this Saturday at 11 AM?',
+    'Hi, do you take bulk orders for printed tees?',
+    'What is the price for 200 oversized tees?',
+    'That is too expensive, another supplier quoted less.',
+    'I only need about 30 pieces to start. Is that possible?',
+    'How long will delivery take for 150 embroidered hoodies?',
+    'Can we do a sample review call on Friday?',
     'Can I please speak to a human sales representative?',
   ];
 
@@ -165,11 +166,11 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                     {l.name}
                   </span>
                   <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                    2m ago
+                    {l.last_contacted ? new Date(l.last_contacted).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
                   </span>
                 </div>
                 <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {l.requirements || 'Inquiring on property options'}
+                  {l.requirements || 'No requirements shared yet'}
                 </div>
               </div>
             );
@@ -371,10 +372,10 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
             {selectedLead?.name}
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-            Budget: {selectedLead?.budget || '₹80 lakh'} • {selectedLead?.location}
+            Budget: {selectedLead?.budget || 'not shared'} • {selectedLead?.location || 'location unknown'}
           </div>
           <div style={{ marginTop: '6px' }}>
-            <ScoreBadge score={selectedLead?.lead_score || 87} category={selectedLead?.score_category || 'Hot'} />
+            <ScoreBadge score={selectedLead?.lead_score ?? 0} category={selectedLead?.score_category || 'Cold'} />
           </div>
         </div>
 

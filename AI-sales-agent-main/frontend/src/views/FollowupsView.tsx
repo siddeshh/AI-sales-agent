@@ -62,19 +62,19 @@ export const FollowupsView: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
           <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 0</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Brochure &amp; Pricing</div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Catalogue &amp; Price List</div>
           </div>
           <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 2</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Amenities Walkthrough</div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Customisation Options</div>
           </div>
           <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 5</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Financing &amp; Subvention</div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Sample Call / Showroom Offer</div>
           </div>
           <div style={{ padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb' }}>Day 10</div>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Final Courtesy Check</div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>Final Check-in</div>
           </div>
         </div>
       </div>

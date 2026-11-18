@@ -9,7 +9,7 @@ It is a FastAPI + SQLite backend with a React 19 + Vite frontend, built as a mul
 
 **Retail & E-Commerce, for startups and SMEs.**
 
-> Heads-up: the current code, seed data and copy are written for **real estate** (a fictional "Skyline Greens" township in Pune: BHK flats, RERA numbers, site visits, ₹ lakh budgets). Moving it to retail/e-commerce (products, SKUs, carts, order value, demos/calls instead of site visits) is upcoming work. Don't assume the domain logic already fits retail.
+**Demo company: Celestial Wear**, a fictional D2C apparel brand (Bengaluru). It sells online and takes bulk/wholesale orders (boutiques, resellers, corporate gifting, college fests). The seed lives in `services/seed_data.py`: 4 knowledge docs (catalogue, bulk price list with 50/100/250/500+ slabs, shipping and returns, customisation FAQ), 12 leads, 5 conversations, objections, 3 meetings and follow-ups. `POST /api/demo/reset` (the "Reset demo data" button) reloads it. Every price an agent template quotes must match these docs. `COMPANY_PROFILE` in `core/config.py` feeds the LLM prompts.
 
 ## 3. The 10 agents
 
@@ -29,14 +29,14 @@ The code in `backend/app/agents/` has 11 files because scoring and BANT are sepa
 | 10 | **Analytics** | `analytics_agent.py`, `api/analytics.py` | Pulls together KPIs, the funnel, score distribution and "AI Sales Insights" for the dashboard. |
 
 **Orchestrator** (`agents/orchestrator.py`) routes the work.
-- **New lead:** `run_lead_intake_pipeline` runs Research → Scoring → BANT → CRM.
+- **New lead:** `run_lead_intake_pipeline` runs Research → BANT → Scoring → CRM. BANT runs first because it is a score factor; the lead stays at `New` until it replies.
 - **Chat message:** `handle_customer_message` runs sentiment → human-handoff check → objection → scheduling → RAG → default reply.
 
 The human handoff lives inside the orchestrator. It fires on phrases like "talk to human" and sets `conversation.human_takeover`.
 
 ## 4. Running it on Windows
 
-Prereqs: Python 3.11 and Node 18+ (the project was tested with Node 22). Commands are for PowerShell, run from the repo root (`AI-sales-agent-main`).
+Prereqs: Python 3.11 or 3.12 and Node 18+ (the project was tested with Node 22). Commands are for PowerShell, run from `NOVA\AI-sales-agent-main`.
 
 ### Backend (terminal 1)
 ```powershell
@@ -50,6 +50,10 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 - `sales_workforce.db` (SQLite) is created and seeded automatically on the first start, in `backend/`.
 - Optional config: copy `.env.example` to `backend\.env`. `pydantic-settings` reads `.env` from the current directory, which is `backend/`.
 - Don't reuse a `venv` copied from another machine. Its `pyvenv.cfg` points at that machine's Python, so make a fresh one.
+- The first install pulls in PyTorch (CPU) for `sentence-transformers`, which is several hundred MB. The first start downloads the embedding model (~90 MB) and then caches it.
+- LLM: set `LLM_PROVIDER` and `GROQ_API_KEY` (or `OPENAI_API_KEY`, or use local `ollama`) in `backend\.env`. With no key, every agent falls back to its rule-based template, and the message is stored with `provider="rules"`.
+- Tests (from `backend/`): `.\venv\Scripts\python tests\test_rag.py` (offline, stubbed LLM) and `.\venv\Scripts\python tests\test_llm_flow.py` (uses whatever provider `.env` configures).
+- After changing `EMBEDDING_MODEL` or `VECTOR_STORE`, run `.\venv\Scripts\python scripts\reindex.py`. Chunks with stale-size vectors are also re-embedded automatically at startup.
 
 ### Frontend (terminal 2)
 ```powershell
@@ -60,50 +64,56 @@ npm run dev
 - App: http://localhost:5173. Vite proxies `/api` to `http://127.0.0.1:8000`, so the backend must be running.
 - Before you call a change done, check that both of these pass: `npm run build` (type-check + build) and `npm run lint` (oxlint).
 
-### Other things in `Desktop\Webdev\NOVA`
-- The parent folder `NOVA\` holds a separate Vite prototype that uses only mock data (`src/mockData.ts`).
-- `NOVA\AI Sales Agent\` is a duplicate of this repo with a foreign venv, `dist/` and a DB.
-
-This repo (`AI-sales-agent-main`) is the source of truth.
+### Repo layout
+- The git repo root is `NOVA\` (remote `siddeshh/AI-sales-agent`). It contains:
+  - `AI-sales-agent-main\`, the app. **This folder is the source of truth.**
+  - `AI Sales Agent\`, an old duplicate copy that isn't maintained.
+  - A separate Vite prototype at the root that uses only mock data (`src/mockData.ts`).
 
 ## 5. Current state
 
-**No part of the app calls a real AI model today.** No LLM SDK is installed (see `requirements.txt`). `LLM_PROVIDER`, `DEMO_MODE`, `OPENAI_API_KEY` and the other keys are declared in `core/config.py`, but no code reads them.
+### Calls a real model (when a provider is configured)
+Every call goes through `app/services/llm.py` → `chat(system, messages, json_mode)`. The providers are Groq (default), OpenAI and Ollama, all through their OpenAI-compatible APIs. Each call has a 20 s timeout and one retry. If it still fails, the caller falls back to its old rule, and the path taken is logged under `nova.llm`.
 
-### Rule-based or template today (everything)
+| Area | How it works |
+|---|---|
+| Intent / sentiment / objection | One JSON call in `orchestrator.classify`, validated with Pydantic (`IntentResult`). Falls back to the keyword rules. `Message.confidence` is the model's own number; it's `None` for rule turns. |
+| Replies | Communication, Objection, Scheduling and Knowledge replies are LLM-generated, using company profile + lead profile + last 8 messages + stage + retrieved chunks. Max 3 sentences, with no facts that aren't in the chunks. `Message.provider` records `groq/<model>` or `rules`. |
+| BANT | Re-extracted after every customer message as absent/partial/confirmed, each with a quote from the customer or lead profile. Stored in `Lead.bant_json`; the booleans mean "confirmed". |
+| RAG | Retrieval uses `all-MiniLM-L6-v2` (384-dim): top 4 chunks by cosine similarity, threshold `RAG_SIMILARITY_THRESHOLD` (0.35). Vectors are JSON in SQLite, or in Qdrant when `VECTOR_STORE=qdrant`. The answer is generated from those chunks only. A **grounding check** makes sure every number in the answer appears in the chunks or in the question. If not, the answer is regenerated once; if it fails again, the reply becomes "I'll check and get back" and a `FollowUp` task is created. If no chunk passes the threshold twice in a row for the same lead (`Lead.rag_miss_streak`), the conversation goes to a human. |
+
+Known limits:
+- Small local models (e.g. qwen2.5:3b) can invent policies such as "no bulk sales". The grounding check only catches **numbers**.
+- On CPU, Ollama often goes over the 20 s timeout and falls back.
+- With MiniLM, short questions score low (e.g. "Is there a swimming pool?" scores 0.20), so at 0.35 they get "I'll check". The right chunk does rank first.
+
+### Still rule-based or template
 | Area | How it actually works |
 |---|---|
-| Research | `if/elif` on the budget string, then fixed persona text. |
-| Scoring | Hand-tuned point table: base 40, then plus or minus points for budget, timeline, requirement words, engagement and source. "Conversion probability" is just `score × 0.94`. It is not a trained model. |
-| BANT | Keyword and threshold checks. Authority is `True` unless the job title contains "student" or "intern". |
-| Communication | f-string templates with hardcoded Skyline Greens copy. |
-| Objection | Regex keyword lists → a fixed reply per category. |
-| Sentiment / intent | Keyword lists in `orchestrator.py` and `voice_agent.py`. |
-| RAG retrieval | A homemade 128-dim "embedding" that hashes words and bigrams into buckets, plus cosine similarity and a keyword-overlap boost. No real embedding model, no Qdrant (`QDRANT_URL` is unused). Python's `hash()` is salted per process, so embeddings stored at seed time don't match query embeddings after a restart. In practice the keyword boost does most of the ranking. |
-| RAG answer | Returns the top chunk wrapped in a canned sentence picked by keyword ("price", "amenit", "rera"…). It is not generated. |
-| Document upload | Decodes the file bytes as UTF-8. PDF and DOCX text is not extracted, so binary files turn into garbage chunks. |
-| Voice | **Text-to-speech is real**: it uses the browser's `speechSynthesis`. **There is no speech-to-text**: the user clicks preset prompts or types. There's no telephony either. Each turn adds a fake +18 s to the call duration, an empty call gets a default 74 s, and the post-call summary is a fixed paragraph. Every call adds +15 to the lead score. |
-| Scheduling | Generates slots for 11:00, 14:00 and 16:00 on the next N days. Nothing checks a calendar, and booking only writes to the DB. The "confirmation pass dispatched" text is false. |
+| Research | Persona chosen by `Lead.buyer_type` (wholesale / corporate / individual) plus the lead's own form fields. No external lookup. |
+| Scoring | `final = round(0.7 × base) + BANT bonus`. Base = five profile factors (order value / quantity fit 25, timeline 20, buyer type 15, engagement 15, source 10; max 85) scaled to 0–100. BANT bonus = min(30, round(30 × (confirmed/4)^1.5 + 1.5 × partial)), using conversation BANT (`Lead.bant_json`) when present; lead-form BANT only counts as partial. Stored in `Lead.score_breakdown_json` and shown on the lead page. Hot (81+) needs ≥3 confirmed BANT slots. Not a trained model: the Random Forest lives offline in `ml/lead_scoring/` (shown on Analytics). |
+| BANT at lead intake | Keyword and threshold checks (`evaluate_bant`). The LLM version above takes over once the lead sends messages. |
+| Handoff reply, follow-up cadence texts, `/leads/{id}/outreach` drafts | Fixed templates. |
+| Document upload | Plain-text decode only. Files with no readable text are rejected with a 400; PDF/DOCX extraction isn't built yet. |
+| Voice | **Text-to-speech is real**: it uses the browser's `speechSynthesis`. **There is no speech-to-text** and no telephony; the voice agent uses keyword intents. It introduces itself as Celestial Wear's AI assistant and says it is an AI. Duration is real elapsed time, and the summary lists what the customer said. |
+| Scheduling | Slots at 11:00, 14:00 and 16:00, Mon–Sat. Types: `product_demo` (demo / sample review call, Google Meet) and `showroom_visit` (Indiranagar studio). Nothing checks a real calendar. |
 | Follow-up | "Execute" sets the row to `completed` and writes a log entry. **Nothing is sent**: no WhatsApp or email integration exists. |
 | CRM | The local SQLite tables are the CRM. There's no external CRM sync. |
 | Auth | `/auth/login` accepts **any username with no password check** and auto-creates the user. `/auth/me` returns a hardcoded user. |
-| Industry switch | `/demo/switch-industry` changes `settings.DEFAULT_INDUSTRY` in memory only. The agents don't use it. |
 
-### Fake numbers and fake integrations currently shown in the UI (fix these)
-- `api/agents.py`: `invocations_count` per agent (48, 64, …), every agent "Active", and "All Systems Operational". All hardcoded.
-- `AgentsWorkforceView.tsx`: "SLA: 99.9%".
-- `DashboardView.tsx`: "+14.2% vs last month" and "67% BANT verified".
-- `AnalyticsView.tsx`: objection breakdown 68/18/14% and "79% / 84% / 72% resolved".
-- `analytics_agent.py`: insight cards claim "68% of Inquiries", "resolved 79%", "84%", "3.4x" and "2.1x". There are fallbacks too: pipeline value `42000000` and conversion rate `24.5` are shown when the real value is 0.
-- `SettingsView.tsx`: the LLM provider dropdown, API key field and "Saved successfully" message only change local React state. Nothing reaches the backend.
-- `services/api.ts`: the request header is misspelled `'Content-Trans-Type'` (it should be `Content-Type`).
+### Still fake or unconnected in the UI (fix these)
+- `SettingsView.tsx`: the LLM provider dropdown, API key field and "Saved successfully" message only change local React state. Nothing reaches the backend; use `backend/.env`.
+- Outreach drafts and follow-up "Execute" don't send anything (no WhatsApp/email integration).
+- Seeded leads, conversations and documents are sample data, labelled by the navbar badge "Demo mode · Celestial Wear".
+
+Removed in the retail conversion (Nov 2026): hardcoded agent invocation counts, SLA 99.9%, dashboard and analytics trend numbers, invented insight percentages, the made-up default budget for leads with none, placeholder score factors, and the industry switcher (agents never used it).
 
 ### Genuinely working
 - CRUD for leads, meetings, follow-ups and knowledge docs, all stored in SQLite.
 - Pipeline stage moves.
 - The activity log.
 - Funnel counts and score distribution, computed from real DB rows.
-- Chunking of uploaded `.txt` files.
+- Upload, chunking (300 words / 50 overlap), embedding and semantic retrieval for `.txt`/`.md`. The Knowledge page has a "Test a question" box that shows the answer, provider and matched chunks with scores.
 - The orchestrator routing.
 - Browser TTS.
 - Demo reset (`/demo/reset`). This drops and reseeds every table.

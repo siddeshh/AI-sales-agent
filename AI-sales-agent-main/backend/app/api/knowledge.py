@@ -27,7 +27,7 @@ def get_document_chunks(document_id: int, db: Session = Depends(get_db)):
 async def upload_document(
     title: str = Form(...),
     category: str = Form("Brochure"),
-    industry: str = Form("real_estate"),
+    industry: str = Form("retail"),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):

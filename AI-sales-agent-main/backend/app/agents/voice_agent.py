@@ -21,48 +21,50 @@ class VoiceSalesAgent:
         """
         t_lower = transcript.lower()
 
-        # Intent detection in voice
-        if "hello" in t_lower or "hi" in t_lower or "who is this" in t_lower:
-            intent = "Greeting & Introduction"
-            sentiment = "Neutral"
+        # Keyword intents (rule-based); every price/policy quoted here is from the seeded knowledge docs.
+        if any(w in t_lower for w in ["hello", "hi ", "who is this", "who's this"]) or t_lower.strip() in ("hi", "hey"):
+            intent, sentiment = "Greeting & Introduction", "Neutral"
+            spoken_response = cls.introduction(caller_name)
+        elif any(w in t_lower for w in ["expensive", "costly", "too high", "cheaper"]):
+            intent, sentiment = "Price Objection", "Hesitant"
             spoken_response = (
-                f"Hello {caller_name}! This is Maya from Skyline Living. "
-                f"I'm following up on your inquiry for 2 BHK properties in Pune. Is now a good time to speak for two minutes?"
+                "I understand. Our bulk prices drop with quantity: 15 percent off from 50 pieces, "
+                "and up to 35 percent off from 500. Would it help if I quoted the next slab up?"
             )
-        elif "price" in t_lower or "budget" in t_lower or "how much" in t_lower or "cost" in t_lower:
-            intent = "Pricing Inquiry"
-            sentiment = "Positive"
+        elif any(w in t_lower for w in ["price", "budget", "how much", "cost", "rate"]):
+            intent, sentiment = "Pricing Inquiry", "Positive"
             spoken_response = (
-                f"Our 2 BHK apartments in Hinjawadi start at ₹78 lakh all-inclusive. "
-                f"We also have flexible subvention payment plans where you only pay 10% now. Would you like me to text the exact cost sheet to this number?"
+                "Our Classic Crew Tee is 549 rupees retail, and from 50 pieces bulk pricing starts at 467 rupees per piece. "
+                "Shall I send the full bulk price list to your WhatsApp?"
             )
-        elif "expensive" in t_lower or "costly" in t_lower or "too high" in t_lower:
-            intent = "Price Objection"
-            sentiment = "Hesitant"
+        elif any(w in t_lower for w in ["minimum", "moq", "only need", "small order"]):
+            intent, sentiment = "MOQ Objection", "Hesitant"
             spoken_response = (
-                f"I completely hear you, {caller_name}. That includes reserved basement parking and lifetime clubhouse access. "
-                f"We also have a compact smart layout starting at ₹72 lakhs. Would you like to review both options during a brief site visit?"
+                "No problem. Bulk pricing starts at 50 pieces, but you can place a trial order of 20 to 49 pieces "
+                "at 10 percent off to check the quality first."
             )
-        elif "visit" in t_lower or "meet" in t_lower or "saturday" in t_lower or "sunday" in t_lower or "weekend" in t_lower:
-            intent = "Site Visit Booking"
-            sentiment = "Positive"
+        elif any(w in t_lower for w in ["delivery", "how long", "lead time", "urgent", "by next week"]):
+            intent, sentiment = "Delivery Question", "Neutral"
             spoken_response = (
-                f"That's wonderful! We have open VIP slots this Saturday at 11 AM or 3 PM at the Hinjawadi experience center. "
-                f"Which time works better for you and your family?"
+                "Plain bulk orders ship in 7 to 10 business days. If you're in a hurry, express production takes "
+                "5 to 7 business days for up to 250 pieces, at a 12 percent surcharge."
             )
-        elif "yes" in t_lower or "saturday" in t_lower or "11" in t_lower or "confirm" in t_lower:
-            intent = "Slot Confirmed"
-            sentiment = "Positive"
+        elif any(w in t_lower for w in ["demo", "sample", "showroom", "visit", "meet", "call"]):
+            intent, sentiment = "Meeting Booking", "Positive"
             spoken_response = (
-                f"Perfect! I have confirmed your appointment for this Saturday at 11 AM. "
-                f"I'm sending the Google Maps location pin and pass to your WhatsApp right away. We look forward to hosting you!"
+                "Happy to set that up. We can do a sample review call on Google Meet, or you can visit our showroom "
+                "in Indiranagar, Bengaluru. Which would you prefer, and what day suits you?"
+            )
+        elif any(w in t_lower for w in ["yes", "confirm", "works", "okay", "ok"]):
+            intent, sentiment = "Confirmation", "Positive"
+            spoken_response = (
+                "Great. I'll note that down, and a member of our team will confirm the time with you on WhatsApp."
             )
         else:
-            intent = "General Inquiry"
-            sentiment = "Positive"
+            intent, sentiment = "General Inquiry", "Neutral"
             spoken_response = (
-                f"I understand. We offer Vastu-compliant 2 and 3 BHK homes with 40-plus amenities right next to the metro corridor. "
-                f"When are you planning to finalize your home?"
+                "We make tees, polos, hoodies, sweatshirts, kurtas, joggers, caps and totes, with printing or embroidery "
+                "for bulk orders. What are you looking for, and roughly how many pieces?"
             )
 
         return {
@@ -74,27 +76,21 @@ class VoiceSalesAgent:
             "timestamp": datetime.utcnow().isoformat()
         }
 
+    @staticmethod
+    def introduction(caller_name: str) -> str:
+        first = (caller_name or "there").split()[0]
+        return (f"Hello {first}, this is the AI assistant from Celestial Wear. I'm an AI, not a person. "
+                f"I'm calling about your enquiry for bulk apparel. Is now a good time for two minutes?")
+
     @classmethod
     def generate_call_summary(cls, caller_name: str, duration_sec: int, transcript_turns: List[Dict[str, str]]) -> Dict[str, Any]:
-        """
-        Summarizes completed phone call into actionable CRM notes.
-        """
-        summary = (
-            f"Voice call completed with {caller_name} (Duration: {duration_sec}s). "
-            f"Prospect expressed active interest in 2 BHK inventory near Pune IT Park. "
-            f"Discussed ₹78L-₹85L price brackets and subvention payment structure. "
-            f"Agreed to review site plan and tentative weekend visit."
-        )
-
-        action_items = (
-            "1. Send WhatsApp location pin & PDF brochure.\n"
-            "2. Reserve Saturday 11 AM calendar slot.\n"
-            "3. Notify dedicated property manager."
-        )
-
+        """Summary built from the actual transcript (customer lines), not a fixed paragraph."""
+        said = [t["text"] for t in transcript_turns if t.get("speaker") == "customer"]
+        summary = (f"Voice call with {caller_name} ({len(said)} customer turns). Customer said: "
+                   + (" | ".join(said) if said else "nothing yet") + ".")
         return {
             "summary": summary,
-            "sentiment": "Positive",
-            "action_items": action_items,
-            "lead_score_boost": +15
+            "sentiment": "Neutral",
+            "action_items": "Review the transcript and send the quote or meeting confirmation.",
+            "lead_score_boost": 0,  # scoring now comes from LeadScoringAgent, not a fixed bonus
         }

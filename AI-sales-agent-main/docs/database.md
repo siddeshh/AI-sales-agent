@@ -34,9 +34,10 @@ The platform utilizes **SQLAlchemy ORM**, compatible with **SQLite** (local zero
 - `email` (String)
 - `phone` (String)
 - `company` (String)
-- `industry` (String, default: "real_estate")
+- `industry` (String, default: "retail")
 - `location` (String)
-- `budget` (String, e.g. "₹80 lakh")
+- `budget` (String, e.g. "₹1,20,000")
+- `order_quantity` (Integer, pieces) and `buyer_type` (wholesale / corporate / individual)
 - `budget_numeric` (Float, in INR)
 - `requirements` (Text)
 - `timeline` (String)
@@ -72,7 +73,7 @@ The platform utilizes **SQLAlchemy ORM**, compatible with **SQLite** (local zero
 - `id`, `lead_id`, `cadence_step` (0, 2, 5, 10), `due_date`, `status` ("pending", "completed", "overdue"), `channel`, `title`, `message_content`
 
 ### `meetings`
-- `id`, `lead_id`, `title`, `meeting_type` ("site_visit", "sales_call", "product_demo"), `scheduled_time`, `duration_minutes`, `status`, `location_or_link`, `notes`
+- `id`, `lead_id`, `title`, `meeting_type` ("product_demo" = demo / sample review call, "showroom_visit"), `scheduled_time`, `duration_minutes`, `status`, `location_or_link`, `notes`
 
 ### `agent_activity_logs`
 - `id`, `agent_name`, `action_type`, `lead_id`, `lead_name`, `description`, `details`, `status`, `created_at`

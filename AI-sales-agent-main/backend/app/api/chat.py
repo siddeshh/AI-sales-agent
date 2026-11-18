@@ -111,11 +111,8 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
     db.add(ai_msg)
 
     # 4. Refresh lead score based on conversation engagement
-    total_messages = db.query(Message).filter(Message.conversation_id == conv.id).count()
-    score_update = LeadScoringAgent.score_lead(lead, engagement_count=total_messages)
-    lead.lead_score = score_update["lead_score"]
-    lead.conversion_probability = score_update["conversion_probability"]
-    lead.score_category = score_update["score_category"]
+    db.flush()
+    LeadScoringAgent.apply(lead, db)
     lead.last_contacted = datetime.utcnow()
 
     db.commit()

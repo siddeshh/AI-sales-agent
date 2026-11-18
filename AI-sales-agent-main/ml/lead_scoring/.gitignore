@@ -1,0 +1,4 @@
+# Dataset is not redistributed: download Leads.csv yourself (see README)
+data/
+*.csv
+.venv/

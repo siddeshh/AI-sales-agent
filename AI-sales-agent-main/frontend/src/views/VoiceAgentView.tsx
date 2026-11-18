@@ -49,7 +49,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
       const call = await api.initiateCall(selectedLeadId, selectedLead?.phone);
       setCallSession(call);
       setIsCalling(true);
-      const initialText = `Hello ${selectedLead?.name?.split(' ')[0]}! This is Maya from Skyline Living following up on your inquiry. Is now a good time to speak for two minutes?`;
+      const initialText = `Hello ${selectedLead?.name?.split(' ')[0] || 'there'}, this is the AI assistant from Celestial Wear. I'm an AI, not a person. I'm calling about your enquiry for bulk apparel. Is now a good time for two minutes?`;
       setTranscriptTurns([
         { speaker: 'ai', text: initialText }
       ]);
@@ -102,10 +102,11 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
 
   const VOICE_PROMPTS = [
     'Hello, who is this calling?',
-    'What is the price of 2 BHK in Hinjawadi?',
-    '₹80 lakh is slightly on the higher side. Are there discounts?',
-    'Can we book a VIP site visit this Saturday at 11 AM?',
-    'Yes, Saturday 11 AM works perfectly for me.',
+    'What is the price for crew tees in bulk?',
+    'That is too expensive for us.',
+    'I only need about 30 pieces, is there a minimum order?',
+    'How long does delivery take?',
+    'Can we do a sample review call on Friday?',
   ];
 
   return (
@@ -215,7 +216,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
                     }}
                   >
                     <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>
-                      {isCustomer ? selectedLead?.name : 'Maya (Voice Agent)'}
+                      {isCustomer ? selectedLead?.name : 'Celestial Wear AI assistant'}
                     </div>
                     <div style={{
                       padding: '8px 12px',

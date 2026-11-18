@@ -22,7 +22,8 @@ log = logging.getLogger("nova.llm")
 class IntentResult(BaseModel):
     intent: Literal["question", "objection", "ready_to_buy", "not_now", "human_request", "opt_out", "greeting", "other"]
     sentiment: Literal["positive", "neutral", "hesitant", "negative"]
-    objection_type: Optional[Literal["price", "timing", "competitor", "authority", "no_interest", "send_details"]] = None
+    objection_type: Optional[Literal["price", "moq", "delivery", "competitor", "authority", "timing", "no_interest",
+                                     "send_details"]] = None
     confidence: Optional[float] = Field(default=None, ge=0, le=1)
 
 
@@ -30,17 +31,15 @@ CLASSIFY_SYSTEM = (
     "You classify the latest customer message in a sales chat. Return only JSON with exactly these keys:\n"
     '{"intent": one of ["question","objection","ready_to_buy","not_now","human_request","opt_out","greeting","other"], '
     '"sentiment": one of ["positive","neutral","hesitant","negative"], '
-    '"objection_type": one of ["price","timing","competitor","authority","no_interest","send_details"] or null, '
+    '"objection_type": one of ["price","moq","delivery","competitor","authority","timing","no_interest","send_details"] or null, '
     '"confidence": number between 0 and 1}\n'
     "Definitions: question = asks about products, pricing, availability or policies; objection = pushes back "
-    "(too expensive, competitor, needs approval); ready_to_buy = wants to buy, book a meeting, call or demo; "
+    "(too expensive, quantity below minimum order = moq, delivery too slow, competitor, needs approval); "
+    "ready_to_buy = wants to order, book a sample review call, product demo or showroom visit; "
     "not_now = wants to postpone; human_request = asks for a human, manager or real person; opt_out = wants no "
     "more contact; greeting = only a hello. objection_type is null unless intent is objection, not_now or opt_out."
 )
 
-# LLM objection labels -> keys of ObjectionHandlingAgent's rule templates (used for the fallback reply)
-LABEL_TO_RULE = {"price": "price", "timing": "timing", "competitor": "competitor", "authority": "authority",
-                 "no_interest": "not_interested", "send_details": "trust"}
 
 class WorkforceOrchestrator:
     """
@@ -68,16 +67,7 @@ class WorkforceOrchestrator:
         cls._log_activity(db, "Lead Research Agent", "research", lead.id, lead.name,
                           f"Generated prospect persona '{research['persona_type']}' and mapped pain points.")
 
-        # Step 2: Scoring Agent
-        score_res = LeadScoringAgent.score_lead(lead, engagement_count=0)
-        lead.lead_score = score_res["lead_score"]
-        lead.conversion_probability = score_res["conversion_probability"]
-        lead.score_category = score_res["score_category"]
-
-        cls._log_activity(db, "Lead Scoring Agent", "score", lead.id, lead.name,
-                          f"Computed explainable score: {lead.lead_score}/100 ({lead.score_category}). Factors: {', '.join(score_res['why_summary'][:2])}")
-
-        # Step 3: Qualification Agent
+        # Step 2: Qualification Agent (before scoring: BANT is a score factor)
         qual = QualificationAgent.evaluate_bant(lead)
         lead.qualification_status = qual["qualification_status"]
         bant_data = qual["bant_breakdown"]
@@ -89,14 +79,18 @@ class WorkforceOrchestrator:
         cls._log_activity(db, "Qualification Agent", "qualify", lead.id, lead.name,
                           f"BANT evaluation completed: Status '{lead.qualification_status}'. {qual['reason']}")
 
-        # Step 4: CRM Agent State Update
-        lead.next_best_action = "Dispatch Personalized Multi-Channel Introduction"
-        lead.next_best_action_reason = "Lead intake verified with high budget match; outreach queued."
-        lead.stage = "Contacted"
+        # Step 3: Scoring Agent
+        score_res = LeadScoringAgent.apply(lead, db)
 
+        cls._log_activity(db, "Lead Scoring Agent", "score", lead.id, lead.name,
+                          f"Computed explainable score: {lead.lead_score}/100 ({lead.score_category}). Factors: {', '.join(score_res['why_summary'][:2])}")
+
+        # Step 4: CRM Agent State Update
+        lead.next_best_action = "Send introduction message with catalogue and bulk price list"
+        lead.next_best_action_reason = f"Lead scored {lead.lead_score}/100 at intake; no message has been sent yet."
         CRMAgent.update_lead_state(
-            lead, db, 
-            stage="Contacted", 
+            lead, db,
+            stage="New",  # nothing has been sent yet; the stage moves when the lead replies
             next_action=lead.next_best_action, 
             next_action_reason=lead.next_best_action_reason,
             qualification_status=lead.qualification_status
@@ -146,20 +140,19 @@ class WorkforceOrchestrator:
 
         human_triggers = ["talk to human", "speak to manager", "manager", "real person", "sales representative",
                           "agent please", "human agent", "call me directly"]
-        scheduling = ["site visit", "visit", "schedule", "meeting", "meet", "appointment", "demo", "book", "tomorrow",
+        scheduling = ["showroom", "visit", "schedule", "meeting", "meet", "appointment", "demo", "sample", "call me",
+                      "tomorrow",
                       "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-        rule_to_label = {"price": "price", "timing": "timing", "competitor": "competitor", "authority": "authority",
-                         "trust": "send_details", "not_interested": "no_interest"}
 
         objection = ObjectionHandlingAgent.detect_objection(user_message)
         if any(t in msg for t in human_triggers):
             intent, obj = "human_request", None
-        elif objection == "not_interested":
+        elif objection == "no_interest":
             intent, obj = "opt_out", "no_interest"
         elif objection == "timing":
             intent, obj = "not_now", "timing"
         elif objection:
-            intent, obj = "objection", rule_to_label[objection]
+            intent, obj = "objection", objection
         elif any(k in msg for k in scheduling):
             intent, obj = "ready_to_buy", None
         elif "?" in msg or len(user_message.split()) > 4:
@@ -210,7 +203,7 @@ class WorkforceOrchestrator:
         if cls_res.intent in ("objection", "not_now", "opt_out"):
             obj_type = cls_res.objection_type or ("no_interest" if cls_res.intent == "opt_out" else "timing")
             chunks = cls._retrieve(user_message, db)
-            obj_res = ObjectionHandlingAgent.generate_reply(lead, LABEL_TO_RULE[obj_type], history, chunks)
+            obj_res = ObjectionHandlingAgent.generate_reply(lead, obj_type, history, chunks)
             db.add(ObjectionRecord(
                 lead_id=lead.id, conversation_id=conversation.id, objection_type=obj_type,
                 customer_statement=user_message, handled_response=obj_res["handled_response"],

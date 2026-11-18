@@ -8,7 +8,7 @@ The backend provides a modular RESTful API built on **FastAPI**. Interactive Swa
 - `GET /api/leads`: List leads with optional filters (`stage`, `score_category`, `search`).
 - `POST /api/leads`: Create a new lead; optionally triggers AI intake pipeline automatically (`auto_run_ai=true`).
 - `GET /api/leads/{id}`: Detailed 360° lead dossier with score factors and conversations.
-- `PUT /api/leads/{id}`: Update lead properties.
+- `PUT /api/leads/{id}`: Update lead fields.
 - `DELETE /api/leads/{id}`: Delete lead and cascading records.
 - `POST /api/leads/{id}/research`: Manually trigger Lead Research Agent.
 - `POST /api/leads/{id}/score`: Re-calculate explainable score and factor impacts.
@@ -33,7 +33,7 @@ The backend provides a modular RESTful API built on **FastAPI**. Interactive Swa
 
 ## 5. Meetings (`/api/meetings`)
 - `GET /api/meetings/slots`: Fetch upcoming slots within enterprise operating hours.
-- `GET /api/meetings`: List booked meetings and site visits.
+- `GET /api/meetings`: List booked sample review calls and showroom visits.
 - `POST /api/meetings`: Schedule appointment and auto-advance pipeline stage.
 
 ## 6. Follow-up Cadence (`/api/followups`)

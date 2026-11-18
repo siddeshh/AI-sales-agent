@@ -1,5 +1,6 @@
 import React from 'react';
 import { DashboardMetrics } from '../types';
+import { ScoringModelPanel } from '../components/ScoringModelPanel';
 
 interface AnalyticsViewProps {
   metrics: DashboardMetrics | null;
@@ -7,36 +8,19 @@ interface AnalyticsViewProps {
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
-  const kpis = metrics?.kpis || {
-    total_leads: 3,
-    new_leads: 0,
-    hot_leads: 2,
-    qualified_leads: 2,
-    meetings_scheduled: 1,
-    conversion_rate: 33.3,
-    pipeline_value_inr: 25500000,
-    ai_conversations_count: 4,
-    active_followups: 2,
+  if (!metrics) {
+    return <div className="card" style={{ fontSize: '13px', color: '#64748b' }}>Loading analytics…</div>;
+  }
+  const kpis = metrics.kpis;
+  const scoreDist = metrics.score_distribution;
+  const objections = metrics.objections || [];
+  const totalObjections = objections.reduce((n, o) => n + o.count, 0);
+  const objectionLabels: Record<string, string> = {
+    price: 'Price', moq: 'Minimum order quantity', delivery: 'Delivery time', competitor: 'Competitor comparison',
+    authority: 'Needs approval', timing: 'Not now', no_interest: 'Not interested', send_details: 'Asked for details',
   };
 
-  const scoreDist = metrics?.score_distribution || {
-    'Hot (81-100)': 2,
-    'Qualified (61-80)': 0,
-    'Warm (31-60)': 1,
-    'Cold (0-30)': 0,
-  };
-
-  const objections = [
-    { type: 'Price / Budget Ceiling', percentage: 68, resolved: '79% resolved with 10:90 subvention financing' },
-    { type: 'Timeline & Possession Uncertainty', percentage: 18, resolved: '84% resolved with MahaRERA guarantee' },
-    { type: 'Competitor Comparison', percentage: 14, resolved: '72% resolved with open green ratio proof' },
-  ];
-
-  const formatCurrency = (val: number) => {
-    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
-    if (val >= 100000) return `₹${(val / 100000).toFixed(1)} L`;
-    return `₹${val.toLocaleString()}`;
-  };
+  const formatCurrency = (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -53,7 +37,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
             {kpis.conversion_rate}%
           </div>
-          <div style={{ fontSize: '11px', color: '#16a34a' }}>+4.2% vs target</div>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>Meetings scheduled / total leads</div>
         </div>
 
         <div className="card" style={{ padding: '14px 16px' }}>
@@ -61,15 +45,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
             {formatCurrency(kpis.pipeline_value_inr)}
           </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>Qualified &amp; Hot deals</div>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>Stated budgets of open leads</div>
         </div>
 
         <div className="card" style={{ padding: '14px 16px' }}>
-          <div style={{ fontSize: '12px', color: '#64748b' }}>Avg. Response Time</div>
+          <div style={{ fontSize: '12px', color: '#64748b' }}>Meetings Scheduled</div>
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
-            &lt; 3.2s
+            {kpis.meetings_scheduled}
           </div>
-          <div style={{ fontSize: '11px', color: '#16a34a' }}>Autonomous AI pod</div>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>Demo calls &amp; showroom visits</div>
         </div>
 
         <div className="card" style={{ padding: '14px 16px' }}>
@@ -77,7 +61,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px' }}>
             {kpis.ai_conversations_count}
           </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>Omnichannel chat &amp; voice</div>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>Chat, WhatsApp &amp; email threads</div>
         </div>
       </div>
 
@@ -93,14 +77,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {(metrics?.funnel || [
-              { stage: 'New Inbound', count: 3, percentage: 100 },
-              { stage: 'AI Research & Score', count: 3, percentage: 100 },
-              { stage: 'Contacted', count: 3, percentage: 100 },
-              { stage: 'Engaged', count: 2, percentage: 67 },
-              { stage: 'BANT Qualified', count: 2, percentage: 67 },
-              { stage: 'Meeting Scheduled', count: 1, percentage: 33 },
-            ]).map((step) => (
+            {metrics.funnel.map((step) => (
               <div key={step.stage}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                   <span style={{ color: '#475569' }}>{step.stage}</span>
@@ -150,25 +127,31 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ metrics }) => {
           Objection Handling Performance
         </div>
         <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
-          Frequency of customer hesitations and playbook resolution rates
+          Objections recorded by the Objection agent ({totalObjections} total) and how many it answered
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          {objections.map((obj, i) => (
-            <div key={i} style={{ padding: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '2px' }}>
-                {obj.type}
+        {objections.length === 0 ? (
+          <div style={{ fontSize: '12px', color: '#64748b' }}>No objections recorded yet.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+            {objections.map((obj) => (
+              <div key={obj.type} style={{ padding: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '2px' }}>
+                  {objectionLabels[obj.type] || obj.type}
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
+                  {obj.count} ({obj.percentage}% of objections)
+                </div>
+                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 500 }}>
+                  {obj.addressed} answered by the agent
+                </div>
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
-                {obj.percentage}% of inquiries
-              </div>
-              <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 500 }}>
-                ✓ {obj.resolved}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <ScoringModelPanel />
     </div>
   );
 };

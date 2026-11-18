@@ -4,6 +4,7 @@ VECTOR_STORE=sqlite (default): vectors live as JSON in knowledge_chunks.embeddin
 VECTOR_STORE=qdrant: same vectors mirrored into Qdrant (QDRANT_URL, or embedded on-disk mode when unset).
 SQLite stays the source of truth for chunk text either way.
 """
+import atexit
 import json
 import logging
 import re
@@ -99,6 +100,7 @@ class QdrantVectorStore:
             raise RuntimeError("VECTOR_STORE=qdrant needs `pip install qdrant-client`") from e
         self.client = (QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY) if settings.QDRANT_URL
                        else QdrantClient(path=settings.QDRANT_PATH))
+        atexit.register(self.client.close)  # avoids a noisy __del__ traceback at interpreter shutdown
         if not self.client.collection_exists(self.COLLECTION):
             self.client.create_collection(self.COLLECTION, vectors_config=VectorParams(
                 size=EmbeddingEngine.DIMENSIONS, distance=Distance.COSINE))
@@ -142,6 +144,18 @@ def index_chunks(db: Session, chunks: list):
         c.metadata_json = json.dumps(meta)
         items.append((c.id, v, {**meta, "document_id": c.document_id}))
     vector_store().upsert(items)
+
+
+def reindex_stale(db: Session) -> int:
+    """Re-embed chunks with no vector or a vector of the wrong size (e.g. the old 128-dim hash embeddings)."""
+    from app.models.entities import KnowledgeChunk
+    stale = [c for c in db.query(KnowledgeChunk).all()
+             if not c.embedding_json or len(json.loads(c.embedding_json)) != EmbeddingEngine.DIMENSIONS]
+    if stale:
+        index_chunks(db, stale)
+        db.commit()
+        log.warning("Re-embedded %d stale knowledge chunks", len(stale))
+    return len(stale)
 
 
 # ---------------------------------------------------------------- retrieval

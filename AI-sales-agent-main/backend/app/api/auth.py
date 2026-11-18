@@ -27,7 +27,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         # Auto-create demo user if not existing
         user = User(
             username=payload.username,
-            email=f"{payload.username}@skylineestates.com",
+            email=f"{payload.username}@celestialwear.in",
             hashed_password="demo_password",
             full_name=payload.username.title(),
             role="sales_rep",
@@ -55,7 +55,7 @@ def get_current_user_demo():
     return {
         "id": 1,
         "username": "salesrep",
-        "email": "sales@skylineestates.com",
+        "email": "sales@celestialwear.in",
         "full_name": "Alex Turner",
         "role": "sales_rep"
     }

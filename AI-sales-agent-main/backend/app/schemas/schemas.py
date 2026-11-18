@@ -44,13 +44,15 @@ class LeadCreate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     company: Optional[str] = None
-    industry: str = "real_estate"
+    industry: str = "retail"
     job_title: Optional[str] = None
-    location: Optional[str] = "Pune"
-    budget: Optional[str] = "₹80 lakh"
-    budget_numeric: Optional[float] = 8000000.0
-    requirements: Optional[str] = "2 BHK East-Facing near IT Park"
-    timeline: Optional[str] = "Within 30 days"
+    location: Optional[str] = None
+    budget: Optional[str] = None
+    budget_numeric: Optional[float] = None
+    requirements: Optional[str] = None
+    order_quantity: Optional[int] = None
+    buyer_type: Optional[str] = None  # wholesale, corporate, individual
+    timeline: Optional[str] = None
     source: str = "Website Form"
     assigned_rep: Optional[str] = "AI Agent Workforce"
 
@@ -65,6 +67,8 @@ class LeadUpdate(BaseModel):
     budget: Optional[str] = None
     budget_numeric: Optional[float] = None
     requirements: Optional[str] = None
+    order_quantity: Optional[int] = None
+    buyer_type: Optional[str] = None
     timeline: Optional[str] = None
     source: Optional[str] = None
     stage: Optional[str] = None
@@ -87,6 +91,8 @@ class LeadOut(BaseModel):
     budget: Optional[str]
     budget_numeric: Optional[float]
     requirements: Optional[str]
+    order_quantity: Optional[int] = None
+    buyer_type: Optional[str] = None
     timeline: Optional[str]
     source: str
     lead_score: int
@@ -99,6 +105,7 @@ class LeadOut(BaseModel):
     need_qualified: bool
     timeline_qualified: bool
     bant_json: Optional[str] = None
+    score_breakdown_json: Optional[str] = None
     research_summary: Optional[str]
     pain_points: Optional[str]
     buying_intent: Optional[str]
@@ -221,7 +228,7 @@ class KnowledgeDocumentOut(BaseModel):
 
 class RAGQueryRequest(BaseModel):
     query: str
-    industry: str = "real_estate"
+    industry: str = "retail"
 
 class RAGQueryResponse(BaseModel):
     query: str
@@ -253,10 +260,10 @@ class FollowUpOut(BaseModel):
 class MeetingCreate(BaseModel):
     lead_id: int
     title: str
-    meeting_type: str = "site_visit"
+    meeting_type: str = "product_demo"
     scheduled_time: datetime
     duration_minutes: int = 45
-    location_or_link: Optional[str] = "Site Office: Hinjawadi Phase 1, Pune"
+    location_or_link: Optional[str] = None
     notes: Optional[str] = None
 
 class MeetingOut(BaseModel):

@@ -41,7 +41,8 @@ def schedule_meeting(payload: MeetingCreate, db: Session = Depends(get_db)):
         meeting_type=payload.meeting_type,
         scheduled_time=payload.scheduled_time,
         duration_minutes=payload.duration_minutes,
-        location_or_link=payload.location_or_link or "Skyline Experience Centre, Hinjawadi Pune",
+        location_or_link=payload.location_or_link or ("Celestial Wear Studio, Indiranagar, Bengaluru"
+                                                     if payload.meeting_type == "showroom_visit" else "Google Meet"),
         notes=payload.notes,
         status="scheduled"
     )
@@ -51,8 +52,8 @@ def schedule_meeting(payload: MeetingCreate, db: Session = Depends(get_db)):
     CRMAgent.update_lead_state(
         lead, db,
         stage="Meeting Scheduled",
-        next_action=f"Host {payload.meeting_type.replace('_', ' ').title()}: Prepare VIP dossier",
-        next_action_reason="Site visit / demo appointment confirmed."
+        next_action=f"Prepare for {payload.meeting_type.replace('_', ' ')}: samples, swatches and quote",
+        next_action_reason="Product demo / showroom visit booked."
     )
 
     db.commit()

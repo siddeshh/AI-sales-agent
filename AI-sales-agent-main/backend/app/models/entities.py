@@ -23,14 +23,16 @@ class Lead(Base):
     email = Column(String(100), nullable=True, index=True)
     phone = Column(String(30), nullable=True)
     company = Column(String(100), nullable=True)
-    industry = Column(String(50), default="real_estate")
+    industry = Column(String(50), default="retail")
     job_title = Column(String(100), nullable=True)
     location = Column(String(100), nullable=True)
-    budget = Column(String(50), nullable=True)           # e.g., "₹80 lakh"
-    budget_numeric = Column(Float, default=0.0)         # in INR (8000000.0)
-    requirements = Column(Text, nullable=True)          # e.g. "2 BHK, Hinjawadi Pune, East-facing, gated society"
-    timeline = Column(String(50), nullable=True)        # e.g. "Within 30 days"
-    source = Column(String(50), default="Website Form") # Website Form, MagicBricks, Meta Ads, Referral
+    budget = Column(String(50), nullable=True)           # e.g. "₹1,20,000"
+    budget_numeric = Column(Float, default=0.0)         # in INR (120000.0)
+    requirements = Column(Text, nullable=True)          # e.g. "150 printed crew tees, mixed sizes"
+    order_quantity = Column(Integer, nullable=True)     # units the buyer wants
+    buyer_type = Column(String(20), nullable=True)      # wholesale, corporate, individual
+    timeline = Column(String(50), nullable=True)        # e.g. "Within 3 weeks"
+    source = Column(String(50), default="Website Form") # Website Form, Instagram, WhatsApp, Trade Fair, CSV Import
     
     # Scoring & Qualification
     lead_score = Column(Integer, default=50)            # 0 - 100
@@ -46,6 +48,7 @@ class Lead(Base):
     timeline_qualified = Column(Boolean, default=False)
     # LLM-extracted BANT: {"budget": {"status": "absent|partial|confirmed", "evidence": "..."}, ...}
     bant_json = Column(Text, nullable=True)
+    score_breakdown_json = Column(Text, nullable=True)  # formula inputs: base, weights, BANT bonus
     rag_miss_streak = Column(Integer, default=0)  # consecutive questions with no chunk above threshold
     
     # AI Enrichment & Next Best Action
@@ -142,8 +145,8 @@ class KnowledgeDocument(Base):
     title = Column(String(200), nullable=False)
     filename = Column(String(200), nullable=False)
     file_type = Column(String(20), default="pdf") # pdf, txt, md, json, faq
-    category = Column(String(50), default="Brochure") # Brochure, Pricing, FAQ, Policy, Property Specs
-    industry = Column(String(50), default="real_estate")
+    category = Column(String(50), default="Catalogue") # Catalogue, Pricing, Policy, FAQ
+    industry = Column(String(50), default="retail")
     total_chunks = Column(Integer, default=0)
     file_size_bytes = Column(Integer, default=0)
     is_processed = Column(Boolean, default=True)
@@ -185,11 +188,11 @@ class Meeting(Base):
     id = Column(Integer, primary_key=True, index=True)
     lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False)
     title = Column(String(150), nullable=False)
-    meeting_type = Column(String(50), default="site_visit") # site_visit, sales_call, product_demo, consultation
+    meeting_type = Column(String(50), default="product_demo") # product_demo (demo / sample review call), showroom_visit
     scheduled_time = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, default=45)
     status = Column(String(30), default="scheduled") # scheduled, completed, cancelled, rescheduled
-    location_or_link = Column(String(200), default="Site Office: Hinjawadi Phase 1, Pune")
+    location_or_link = Column(String(200), default="Google Meet")
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

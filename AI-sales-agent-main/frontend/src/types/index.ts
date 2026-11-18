@@ -18,6 +18,10 @@ export interface Lead {
   budget?: string;
   budget_numeric?: number;
   requirements?: string;
+  order_quantity?: number | null;
+  buyer_type?: string | null;
+  bant_json?: string | null;
+  score_breakdown_json?: string | null;
   timeline?: string;
   source: string;
   lead_score: number;
@@ -175,6 +179,7 @@ export interface DashboardMetrics {
     percentage: number;
   }>;
   score_distribution: Record<string, number>;
+  objections: Array<{ type: string; count: number; percentage: number; addressed: number }>;
   insights: AIInsight[];
 }
 
@@ -200,11 +205,3 @@ export interface AgentActivity {
   created_at: string;
 }
 
-export interface IndustryOption {
-  id: string;
-  name: string;
-  lead_sample: string;
-  meeting_type: string;
-  currency: string;
-  description: string;
-}

@@ -1,14 +1,10 @@
 import React from 'react';
-import { RotateCcw, PlayCircle, Building2, HelpCircle } from 'lucide-react';
-import { IndustryOption } from '../types';
+import { RotateCcw, PlayCircle } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
   onOpenTour: () => void;
   onResetDemo: () => void;
-  industries: IndustryOption[];
-  activeIndustry: string;
-  onSelectIndustry: (id: string) => void;
   isResetting: boolean;
 }
 
@@ -16,9 +12,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   onOpenTour,
   onResetDemo,
-  industries,
-  activeIndustry,
-  onSelectIndustry,
   isResetting,
 }) => {
   const viewTitles: Record<string, string> = {
@@ -57,22 +50,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Controls & Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {/* Industry Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Building2 size={15} color="#64748b" />
-          <select
-            value={activeIndustry}
-            onChange={(e) => onSelectIndustry(e.target.value)}
-            className="form-select"
-            style={{ padding: '5px 8px', fontSize: '12px', height: '30px', width: 'auto' }}
-          >
-            {industries.map((ind) => (
-              <option key={ind.id} value={ind.id}>
-                {ind.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Demo data label (rule: anything simulated is labelled) */}
+        <span className="badge badge-amber" title="Seeded sample data for the fictional brand Celestial Wear">
+          Demo mode · Celestial Wear
+        </span>
 
         {/* 20-Step Demo Tour Button */}
         <button
@@ -89,10 +70,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={onResetDemo}
           disabled={isResetting}
           className="btn btn-secondary btn-sm"
-          title="Reset leads and meetings to factory demo state"
+          title="Delete all data and reload the Celestial Wear demo seed"
         >
           <RotateCcw size={13} color="#64748b" className={isResetting ? 'spin' : ''} />
-          <span>{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
+          <span>{isResetting ? 'Resetting...' : 'Reset demo data'}</span>
         </button>
       </div>
     </header>

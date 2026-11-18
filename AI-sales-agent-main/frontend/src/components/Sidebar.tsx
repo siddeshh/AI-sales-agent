@@ -8,7 +8,6 @@ import {
 interface SidebarProps {
   currentView: string;
   onSelectView: (view: string) => void;
-  activeIndustry: string;
 }
 
 interface NavItem {
@@ -23,7 +22,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView, activeIndustry }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) => {
   const navSections: NavSection[] = [
     {
       title: null,

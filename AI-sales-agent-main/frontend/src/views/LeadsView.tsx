@@ -33,10 +33,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  const [newBudget, setNewBudget] = useState('₹80 lakh');
-  const [newLocation, setNewLocation] = useState('Pune');
-  const [newRequirements, setNewRequirements] = useState('2 BHK, Hinjawadi Phase 1');
-  const [newTimeline, setNewTimeline] = useState('Within 30 days');
+  const [newCompany, setNewCompany] = useState('');
+  const [newBudget, setNewBudget] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newRequirements, setNewRequirements] = useState('');
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newBuyerType, setNewBuyerType] = useState('wholesale');
+  const [newSource, setNewSource] = useState('Website Form');
+  const [newTimeline, setNewTimeline] = useState('');
 
   const filteredLeads = leads.filter((l) => {
     const matchesSearch =
@@ -76,11 +80,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         name: newName,
         email: newEmail,
         phone: newPhone,
-        budget: newBudget,
-        location: newLocation,
-        requirements: newRequirements,
-        timeline: newTimeline,
-        industry: 'real_estate',
+        company: newCompany || undefined,
+        budget: newBudget || undefined,
+        location: newLocation || undefined,
+        requirements: newRequirements || undefined,
+        order_quantity: newQuantity ? Number(newQuantity) : undefined,
+        buyer_type: newBuyerType,
+        source: newSource,
+        timeline: newTimeline || undefined,
+        industry: 'retail',
       });
       setIsAddModalOpen(false);
       setNewName('');
@@ -220,14 +228,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                       </div>
                     </td>
                     <td>
-                      <div style={{ color: '#0f172a' }}>{lead.location || 'Pune'}</div>
+                      <div style={{ color: '#0f172a' }}>{lead.location || '—'}</div>
                       <div style={{ fontSize: '11px', color: '#64748b' }}>
-                        {lead.requirements || '2 BHK Apartment'}
+                        {lead.requirements || ''}{lead.order_quantity ? ` · ${lead.order_quantity} pcs` : ''}
                       </div>
                     </td>
                     <td>
                       <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                        {lead.budget || '₹80 lakh'}
+                        {lead.budget || '—'}
                       </span>
                     </td>
                     <td>
@@ -341,7 +349,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                     type="text"
                     value={newBudget}
                     onChange={(e) => setNewBudget(e.target.value)}
-                    placeholder="e.g. ₹80 lakh"
+                    placeholder="e.g. ₹1,20,000"
                     className="form-input"
                   />
                 </div>
@@ -353,7 +361,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                     type="text"
                     value={newLocation}
                     onChange={(e) => setNewLocation(e.target.value)}
-                    placeholder="e.g. Hinjawadi Pune"
+                    placeholder="e.g. Kochi"
                     className="form-input"
                   />
                 </div>
@@ -367,9 +375,52 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   type="text"
                   value={newRequirements}
                   onChange={(e) => setNewRequirements(e.target.value)}
-                  placeholder="e.g. 2 BHK East-Facing, high floor"
+                  placeholder="e.g. Printed crew tees, mixed sizes"
                   className="form-input"
                 />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Company
+                  </label>
+                  <input type="text" value={newCompany} onChange={(e) => setNewCompany(e.target.value)}
+                    placeholder="e.g. Threadline Boutique" className="form-input" />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Order quantity (pieces)
+                  </label>
+                  <input type="number" min={1} value={newQuantity} onChange={(e) => setNewQuantity(e.target.value)}
+                    placeholder="e.g. 150" className="form-input" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Buyer type
+                  </label>
+                  <select value={newBuyerType} onChange={(e) => setNewBuyerType(e.target.value)} className="form-select">
+                    <option value="wholesale">Wholesale (boutique / reseller)</option>
+                    <option value="corporate">Corporate / institutional</option>
+                    <option value="individual">Individual</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Source
+                  </label>
+                  <select value={newSource} onChange={(e) => setNewSource(e.target.value)} className="form-select">
+                    <option>Website Form</option>
+                    <option>Instagram</option>
+                    <option>WhatsApp</option>
+                    <option>Trade Fair</option>
+                    <option>Referral</option>
+                    <option>CSV Import</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -380,7 +431,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   type="text"
                   value={newTimeline}
                   onChange={(e) => setNewTimeline(e.target.value)}
-                  placeholder="e.g. Within 30 days"
+                  placeholder="e.g. Within 3 weeks"
                   className="form-input"
                 />
               </div>

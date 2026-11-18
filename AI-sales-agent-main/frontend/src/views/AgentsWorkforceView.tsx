@@ -107,7 +107,7 @@ export const AgentsWorkforceView: React.FC = () => {
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
                   {selectedAgent.name}
                 </div>
-                <span className="badge badge-green">Active</span>
+                <span className={`badge ${selectedAgent.status === 'Active' ? 'badge-green' : 'badge-gray'}`}>{selectedAgent.status}</span>
               </div>
 
               <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
@@ -119,8 +119,7 @@ export const AgentsWorkforceView: React.FC = () => {
               </p>
 
               <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
-                <div>Total invocations: <strong style={{ color: '#0f172a' }}>{selectedAgent.invocations_count}</strong></div>
-                <div>SLA: <strong style={{ color: '#16a34a' }}>99.9%</strong></div>
+                <div>Logged actions: <strong style={{ color: '#0f172a' }}>{selectedAgent.invocations_count}</strong></div>
               </div>
             </div>
           )}
