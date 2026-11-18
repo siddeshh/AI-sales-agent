@@ -188,6 +188,7 @@ class VoiceCallTurnRequest(BaseModel):
 class VoiceCallOut(BaseModel):
     id: int
     lead_id: int
+    conversation_id: Optional[int] = None
     caller_name: str
     phone_number: Optional[str]
     status: str

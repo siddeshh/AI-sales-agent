@@ -1,332 +1,259 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  PhoneCall, PhoneOff, Mic, Play, 
-  CheckCircle2, Clock, Check 
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Mic, MicOff, PhoneCall, PhoneOff, Send, Volume2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lead, CallSession } from '../types';
 import { api } from '../services/api';
+import { cn } from '@/lib/utils';
+import { novelWordCount, useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 
 interface VoiceAgentViewProps {
   leads: Lead[];
   onRefreshLeads: () => void;
 }
 
+interface Turn { speaker: 'ai' | 'customer'; text: string; agent?: string }
+interface EndResult {
+  summary: string; summary_provider: string; bant_updated: boolean; qualification_status: string;
+  lead_score_after: number; next_action: string; duration_seconds: number;
+}
+
 export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefreshLeads }) => {
-  const [selectedLeadId, setSelectedLeadId] = useState<number>(leads[0]?.id || 1);
-  const [callSession, setCallSession] = useState<CallSession | null>(null);
-  const [isCalling, setIsCalling] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [transcriptTurns, setTranscriptTurns] = useState<Array<{ speaker: string; text: string }>>([]);
-  const [currentSentiment, setCurrentSentiment] = useState('Neutral');
-  const [currentIntent, setCurrentIntent] = useState('Discovery Intro');
-  const [spokenInput, setSpokenInput] = useState('');
-  const [callEndedSummary, setCallEndedSummary] = useState<any>(null);
+  const [leadId, setLeadId] = useState<number | undefined>(leads[0]?.id);
+  const [call, setCall] = useState<CallSession | null>(null);
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [bargedIn, setBargedIn] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [error, setError] = useState('');
+  const [ended, setEnded] = useState<EndResult | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const lead = leads.find((l) => l.id === leadId) || leads[0];
 
-  const selectedLead = leads.find((l) => l.id === selectedLeadId) || leads[0];
+  const callRef = useRef<CallSession | null>(null);
+  const queue = useRef<string[]>([]);       // utterances heard while a reply is still being fetched
+  const sending = useRef(false);
+  const speakingText = useRef('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  callRef.current = call;
 
+  // scroll only the transcript box (scrollIntoView would scroll the whole page and hide the End call button)
+  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [turns.length, busy]);
   useEffect(() => {
-    let interval: any = null;
-    if (isCalling) {
-      interval = setInterval(() => {
-        setDuration((prev) => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isCalling]);
+    if (!call || ended) return;
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [call, ended]);
 
-  const formatDuration = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const speak = (text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const voice = window.speechSynthesis.getVoices().find((v) => v.lang === 'en-IN') ;
+    if (voice) u.voice = voice;
+    u.onstart = () => { setSpeaking(true); setBargedIn(false); };
+    u.onend = u.onerror = () => { setSpeaking(false); speakingText.current = ''; };
+    speakingText.current = text;
+    window.speechSynthesis.speak(u);
   };
 
-  const handleStartCall = async () => {
-    setCallEndedSummary(null);
-    setDuration(0);
-    try {
-      const call = await api.initiateCall(selectedLeadId, selectedLead?.phone);
-      setCallSession(call);
-      setIsCalling(true);
-      const initialText = `Hello ${selectedLead?.name?.split(' ')[0] || 'there'}, this is the AI assistant from Celestial Wear. I'm an AI, not a person. I'm calling about your enquiry for bulk apparel. Is now a good time for two minutes?`;
-      setTranscriptTurns([
-        { speaker: 'ai', text: initialText }
-      ]);
-      speakText(initialText);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleSendVoiceUtterance = async (utterance: string) => {
-    if (!callSession || !utterance) return;
-    setSpokenInput('');
-    setTranscriptTurns((prev) => [...prev, { speaker: 'customer', text: utterance }]);
-
-    try {
-      const res = await api.sendVoiceTurn(callSession.id, utterance);
-      setCurrentIntent(res.intent);
-      setCurrentSentiment(res.sentiment);
-      setTranscriptTurns((prev) => [...prev, { speaker: 'ai', text: res.spoken_response }]);
-      speakText(res.spoken_response);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleEndCall = async () => {
-    if (!callSession) return;
-    setIsCalling(false);
-    if ('speechSynthesis' in window) {
+  const stopSpeaking = () => {
+    if (window.speechSynthesis?.speaking) {
       window.speechSynthesis.cancel();
+      setSpeaking(false);
+      setBargedIn(true);
     }
+  };
+
+  const sendNext = async () => {
+    const c = callRef.current;
+    if (sending.current || !c || queue.current.length === 0) return;
+    sending.current = true;
+    setBusy(true);
+    const text = queue.current.shift()!;
+    setTurns((t) => [...t, { speaker: 'customer', text }]);
     try {
-      const summary = await api.endCall(callSession.id);
-      setCallEndedSummary(summary);
+      const res = await api.sendVoiceTurn(c.id, text);
+      setTurns(res.transcript);
+      if (res.spoken_response) speak(res.spoken_response);
+      else setError('A human has taken over this conversation, so the AI did not answer.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The reply failed');
+    } finally {
+      sending.current = false;
+      setBusy(false);
+      if (queue.current.length) sendNext();
+    }
+  };
+
+  const hear = (text: string) => {
+    if (!callRef.current) return;
+    stopSpeaking(); // a finished utterance always wins over playback
+    queue.current.push(text);
+    sendNext();
+  };
+
+  const speech = useSpeechRecognition({
+    onFinal: hear,
+    // Barge-in: stop playback as soon as the customer starts talking. Words that are all in the sentence
+    // being spoken are our own voice coming back through the speakers, so they don't count.
+    onSpeech: (interim) => {
+      if (window.speechSynthesis?.speaking && novelWordCount(interim, speakingText.current) >= 2) stopSpeaking();
+    },
+  });
+
+  const startCall = async () => {
+    if (!lead) return;
+    setError('');
+    setEnded(null);
+    setSeconds(0);
+    try {
+      const c = await api.initiateCall(lead.id);
+      setCall(c);
+      const t: Turn[] = JSON.parse(c.live_transcript || '[]');
+      setTurns(t);
+      speak(t[0]?.text || '');  // the opening line says it is an AI assistant
+      if (speech.supported) speech.start();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not start the call');
+    }
+  };
+
+  const endCall = async () => {
+    if (!call) return;
+    speech.stop();
+    window.speechSynthesis?.cancel();
+    setSpeaking(false);
+    setBusy(true);
+    try {
+      setEnded(await api.endCall(call.id));
       onRefreshLeads();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not end the call');
+    } finally {
+      setBusy(false);
+      setCall(null);
     }
   };
 
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
 
-  const VOICE_PROMPTS = [
-    'Hello, who is this calling?',
-    'What is the price for crew tees in bulk?',
-    'That is too expensive for us.',
-    'I only need about 30 pieces, is there a minimum order?',
-    'How long does delivery take?',
-    'Can we do a sample review call on Friday?',
-  ];
+  const active = !!call;
+  const mmss = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2>Voice call</h2>
-          <p>Browser voice session: replies are spoken with your browser's text-to-speech. You type or pick the customer's lines (no speech-to-text). No phone call is placed.</p>
+          <p>Talk to the AI assistant as the customer. Each sentence goes through the same agents as chat.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className="badge badge-blue" title="Chrome sends the audio to Google's speech service, so it needs internet. Edge works too.">
+              Uses browser speech recognition (Chrome)
+            </span>
+            <span className="badge badge-gray">Replies spoken with browser text-to-speech</span>
+            <span className="badge badge-gray">No phone call is placed</span>
+          </div>
         </div>
-
-        {/* Lead Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>Target Prospect:</span>
-          <select
-            value={selectedLeadId}
-            disabled={isCalling}
-            onChange={(e) => setSelectedLeadId(Number(e.target.value))}
-            className="form-select"
-            style={{ width: 'auto', height: '32px', fontSize: '13px' }}
-          >
-            {leads.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name} — {l.phone || '+91 98200 00000'}
-              </option>
-            ))}
+        <div className="flex items-center gap-2">
+          <select value={lead?.id} disabled={active} onChange={(e) => setLeadId(Number(e.target.value))} className="form-select w-56">
+            {leads.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
+          {active
+            ? <Button variant="destructive" onClick={endCall} disabled={busy}><PhoneOff /> End call</Button>
+            : <Button onClick={startCall} disabled={!lead}><PhoneCall /> Start call</Button>}
         </div>
       </div>
 
-      {/* Main Grid: Left Active Dialer & Transcript, Right Telemetry */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
-        {/* Left: Call Window */}
-        <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
-          {/* Active Call HUD */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            borderRadius: '6px',
-            background: isCalling ? 'var(--brand-soft)' : 'var(--muted)',
-            border: `1px solid ${isCalling ? 'var(--brand-border)' : 'var(--border)'}`,
-            marginBottom: '16px',
-          }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
-                {selectedLead?.name}
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
-                {selectedLead?.phone || '+91 98201 44821'} • {selectedLead?.requirements}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              {isCalling && (
-                <div style={{ fontSize: '14px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--brand)' }}>
-                  {formatDuration(duration)}
-                </div>
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+        <Card className="min-h-[480px] gap-3 py-5">
+          <CardHeader className="px-5">
+            <CardTitle className="flex items-center justify-between text-[15px]">
+              <span>{active ? `On the call with ${lead?.name}` : 'Transcript'}</span>
+              {active && <span className="font-mono text-sm text-muted-foreground">{mmss}</span>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col gap-3 px-5">
+            <div ref={scrollRef} className="max-h-[360px] flex-1 space-y-3 overflow-y-auto">
+              {turns.length === 0 && (
+                <div className="pt-16 text-center text-sm text-muted-foreground">Pick a lead and press Start call. Allow the microphone when Chrome asks.</div>
               )}
-
-              {!isCalling ? (
-                <button onClick={handleStartCall} className="btn btn-primary btn-sm">
-                  <PhoneCall size={13} />
-                  <span>Start Outbound Call</span>
-                </button>
-              ) : (
-                <button onClick={handleEndCall} className="btn btn-danger btn-sm">
-                  <PhoneOff size={13} />
-                  <span>End Call</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Transcript Feed */}
-          <div style={{
-            flex: 1,
-            minHeight: '260px',
-            maxHeight: '340px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            padding: '14px',
-            borderRadius: '6px',
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            marginBottom: '16px',
-          }}>
-            {transcriptTurns.length === 0 ? (
-              <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: '14px' }}>
-                Click "Start Outbound Call" to initiate conversation.
-              </div>
-            ) : (
-              transcriptTurns.map((turn, i) => {
-                const isCustomer = turn.speaker === 'customer';
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isCustomer ? 'flex-end' : 'flex-start',
-                      alignSelf: isCustomer ? 'flex-end' : 'flex-start',
-                      maxWidth: '85%',
-                    }}
-                  >
-                    <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', marginBottom: '2px' }}>
-                      {isCustomer ? selectedLead?.name : 'Celestial Wear AI assistant'}
-                    </div>
-                    <div style={{
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      background: isCustomer ? 'var(--foreground)' : 'var(--muted)',
-                      color: isCustomer ? 'var(--card)' : 'var(--foreground)',
-                      border: isCustomer ? 'none' : '1px solid var(--border)',
-                      fontSize: '14px',
-                      lineHeight: 1.5,
-                    }}>
-                      {turn.text}
-                    </div>
+              {turns.map((t, i) => (
+                <div key={i} className={cn('flex flex-col gap-1', t.speaker === 'customer' ? 'items-end' : 'items-start')}>
+                  <div className="text-xs text-muted-foreground">
+                    {t.speaker === 'customer' ? `${lead?.name} (you)` : <span className="badge badge-blue">{t.agent || 'AI'}</span>}
                   </div>
-                );
-              })
+                  <div className={cn('max-w-[80%] rounded-xl px-3.5 py-2.5 text-[14px] leading-relaxed',
+                    t.speaker === 'customer' ? 'bg-primary text-primary-foreground' : 'border bg-card')}>
+                    {t.text}
+                  </div>
+                </div>
+              ))}
+              {busy && active && <div className="text-xs text-muted-foreground">The AI is answering…</div>}
+            </div>
+
+            {active && (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  {speech.listening ? (
+                    <><span className="relative flex size-2.5"><span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" /><span className="relative inline-flex size-2.5 rounded-full bg-success" /></span>
+                      <Mic className="size-4" /> <span className="font-medium">Listening…</span></>
+                  ) : (
+                    <><MicOff className="size-4 text-muted-foreground" /><span className="text-muted-foreground">Not listening</span></>
+                  )}
+                  {speaking && <span className="ml-auto flex items-center gap-1 text-muted-foreground"><Volume2 className="size-4" /> Assistant is speaking (start talking to interrupt)</span>}
+                  {bargedIn && !speaking && <span className="ml-auto text-xs text-muted-foreground">Interrupted</span>}
+                </div>
+                <div className="mt-1 min-h-5 text-[14px] italic text-muted-foreground">{speech.interim}</div>
+                {speech.supported && (
+                  <Button variant="outline" size="sm" className="mt-2"
+                    onClick={() => (speech.listening ? speech.stop() : speech.start())}>
+                    {speech.listening ? <><MicOff /> Mute microphone</> : <><Mic /> Listen again</>}
+                  </Button>
+                )}
+              </div>
             )}
-          </div>
 
-          {/* Spoken Utterance Simulator */}
-          {isCalling && (
-            <div>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                Simulate Prospect Speech:
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                {VOICE_PROMPTS.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendVoiceUtterance(p)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ height: '26px', fontSize: '12px' }}
-                  >
-                    <span>"{p}"</span>
-                  </button>
-                ))}
-              </div>
+            {/* Text fallback: always available, and the only input when the browser has no speech recognition */}
+            {active && (
+              <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (typed.trim()) { hear(typed.trim()); setTyped(''); } }}>
+                <input value={typed} onChange={(e) => setTyped(e.target.value)} className="form-input"
+                  placeholder={speech.supported ? 'Or type what the customer says…' : 'Speech recognition is not available in this browser. Type what the customer says…'} />
+                <Button type="submit" variant="outline" disabled={!typed.trim()}><Send /> Send</Button>
+              </form>
+            )}
+            {(error || speech.error) && <div className="text-sm text-danger">{speech.error || error}</div>}
+            {!speech.supported && !active && (
+              <div className="text-sm text-muted-foreground">This browser has no speech recognition (use Chrome or Edge). You can still type during the call.</div>
+            )}
+          </CardContent>
+        </Card>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Or type custom spoken customer reply..."
-                  value={spokenInput}
-                  onChange={(e) => setSpokenInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSendVoiceUtterance(spokenInput);
-                  }}
-                  className="form-input"
-                  style={{ height: '32px', fontSize: '14px' }}
-                />
-                <button
-                  onClick={() => handleSendVoiceUtterance(spokenInput)}
-                  className="btn btn-secondary btn-sm"
-                  style={{ height: '32px' }}
-                >
-                  <Play size={13} />
-                  <span>Speak</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Telemetry & Summary */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="card">
-            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '10px' }}>
-              Call Telemetry
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
-                <span style={{ color: 'var(--muted-foreground)' }}>Status</span>
-                <span style={{ fontWeight: 600, color: isCalling ? 'var(--success)' : 'var(--muted-foreground)' }}>
-                  {isCalling ? '● In Progress' : 'Idle'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
-                <span style={{ color: 'var(--muted-foreground)' }}>Detected Intent</span>
-                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{currentIntent}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
-                <span style={{ color: 'var(--muted-foreground)' }}>Sentiment</span>
-                <span style={{ fontWeight: 600, color: currentSentiment === 'Hesitant' ? 'var(--warning)' : 'var(--success)' }}>
-                  {currentSentiment}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Post Call Notes */}
-          {callEndedSummary && (
-            <div className="card" style={{ background: 'var(--success-soft)', borderColor: 'var(--success-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, color: 'var(--success)', marginBottom: '6px' }}>
-                <CheckCircle2 size={15} color="var(--success)" />
-                <span>Call summary (saved to the internal CRM)</span>
-              </div>
-
-              <div style={{ fontSize: '13px', color: 'var(--success)', lineHeight: 1.4, marginBottom: '8px' }}>
-                {callEndedSummary.summary}
-              </div>
-
-              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--success)', marginBottom: '2px' }}>
-                Action Items:
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--success)', whiteSpace: 'pre-wrap' }}>
-                {callEndedSummary.action_items}
-              </div>
-            </div>
-          )}
-        </div>
+        <Card className="gap-3 py-5">
+          <CardHeader className="px-5">
+            <CardTitle className="text-[15px]">After the call</CardTitle>
+            <CardDescription>The summary is saved to the CRM and BANT is updated from the call.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 px-5 text-[14px]">
+            {!ended && <div className="text-sm text-muted-foreground">End a call to see its 4-line summary here.</div>}
+            {ended && (
+              <>
+                <ol className="list-decimal space-y-1 pl-5">
+                  {ended.summary.split('\n').map((l, i) => <li key={i}>{l}</li>)}
+                </ol>
+                <div className="text-xs text-muted-foreground">Summary by: {ended.summary_provider} · {ended.duration_seconds}s call</div>
+                <div className="flex flex-wrap gap-2">
+                  <span className={cn('badge', ended.bant_updated ? 'badge-green' : 'badge-gray')}>
+                    {ended.bant_updated ? `BANT updated: ${ended.qualification_status}` : 'BANT not updated (no language model)'}
+                  </span>
+                  <span className="badge badge-gray">Score now {ended.lead_score_after}/100</span>
+                </div>
+                <div><span className="text-muted-foreground">Next step: </span>{ended.next_action}</div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

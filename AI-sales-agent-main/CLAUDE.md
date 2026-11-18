@@ -95,14 +95,14 @@ Known limits:
 | BANT at lead intake | Keyword and threshold checks (`evaluate_bant`). The LLM version above takes over once the lead sends messages. |
 | Handoff reply, follow-up cadence texts, `/leads/{id}/outreach` drafts | Fixed templates. |
 | Document upload | Plain-text decode only. Files with no readable text are rejected with a 400; PDF/DOCX extraction isn't built yet. |
-| Voice | **Text-to-speech is real**: it uses the browser's `speechSynthesis`. **There is no speech-to-text** and no telephony; the voice agent uses keyword intents. It introduces itself as Celestial Wear's AI assistant and says it is an AI. Duration is real elapsed time, and the summary lists what the customer said. |
+| Voice | **Speech-to-text** with the browser's Web Speech API (Chrome / Edge; Chrome sends audio to Google, needs internet) and **text-to-speech** with `speechSynthesis`; text box fallback. Each utterance goes through `run_customer_turn` (same orchestrator as chat) in a `voice` conversation. Barge-in stops playback when the user speaks (echo guard: needs 2+ words not in the sentence being spoken). End of call: LLM 4-line summary (rule-based fallback, labelled), BANT update, saved to the CRM. Intro says it is an AI. No phone calls, no Whisper. Tests: `tests/test_voice.py`, `design/test_voice_ui.py` (simulated speech in a real browser). |
 | Scheduling | Slots at 11:00, 14:00 and 16:00, Mon–Sat. Types: `product_demo` (demo / sample review call, Google Meet) and `showroom_visit` (Indiranagar studio). Nothing checks a real calendar. |
 | Follow-up | Email follow-ups are **really sent over SMTP** (`services/email.py`); "sent" only if the server accepted it, else "not_sent" with the error. `EMAIL_TEST_MODE=true` (default) redirects every email to `EMAIL_TEST_RECIPIENT` with "[to: lead@x]" in the subject. WhatsApp follow-ups are marked "simulated". Follow-ups do not pause when a lead replies. |
 | CRM | The local SQLite tables are the CRM. There's no external CRM sync. |
 | Auth | `/auth/login` accepts **any username with no password check** and auto-creates the user. `/auth/me` returns a hardcoded user. |
 
 ### Still simulated (each is labelled "Demo mode — simulated" in the UI)
-- Salesforce, HubSpot, Zoho, WhatsApp, Google Calendar; phone calls and speech-to-text.
+- Salesforce, HubSpot, Zoho, WhatsApp, Google Calendar; phone calls.
 - Seeded leads, conversations and documents are sample data (navbar badge "Demo mode · Celestial Wear").
 - `GET /api/integrations` is the single source for which integrations are real; Settings shows it read-only.
 

@@ -39,7 +39,8 @@ Not implemented: handoff on negative sentiment or on deal size.
 | Internal CRM (this app's database) | Salesforce, HubSpot, Zoho |
 | Email via SMTP (test mode by default) | WhatsApp |
 | LLM calls when a key is set (Groq / OpenAI / Ollama) | Google Calendar (no invites, no video links) |
-| MiniLM embeddings and retrieval | Phone calls / speech-to-text (voice is browser text-to-speech only) |
+| MiniLM embeddings and retrieval | Phone calls |
+| Browser speech recognition and text-to-speech (Web Speech API) | |
 
 ## 4. Activity log
 

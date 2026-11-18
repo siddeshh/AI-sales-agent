@@ -15,7 +15,7 @@ Nova is an AI that does a junior salesperson's job for a small retail or e-comme
 | 3 | **Communication** | Writes chat, WhatsApp and email replies and drafts. |
 | 4 | **Knowledge (RAG)** | Searches the catalogue, bulk price list, shipping/returns policy and customisation FAQ (MiniLM embeddings). Answers only from the retrieved text, and a number check blocks invented prices or dates. |
 | 5 | **Objection** | Price → volume-slab pricing and value; minimum order → smaller trial order; delivery time → express production; competitor → quality, customisation and returns policy. |
-| 6 | **Voice** | Browser voice session that introduces itself as Celestial Wear's AI assistant. Uses browser text-to-speech; there is no speech-to-text or telephony yet. |
+| 6 | **Voice** | Voice call in the browser: speech-to-text with the browser's speech recognition (Chrome / Edge; Chrome sends the audio to Google, so it needs internet), each sentence answered by the same agents as chat, replies spoken with browser text-to-speech, barge-in stops playback, and a 4-line summary plus BANT update at the end. It says it is an AI at the start. No phone calls. |
 | 7 | **Scheduling** | Proposes slots in showroom hours and books product demo / sample review calls or showroom visits. No external calendar yet. |
 | 8 | **Follow-up** | Day 0 / 2 / 5 / 10 tasks. **Email follow-ups are really sent over SMTP** (test mode by default); WhatsApp follow-ups are simulated. A person clicks to send. |
 | 9 | **CRM** | Internal CRM (this app's database): moves leads through pipeline stages and sets the next best action. No external CRM sync. |
@@ -30,7 +30,7 @@ The orchestrator classifies each customer message (intent, sentiment, objection 
 | Internal CRM (this app's database) | Salesforce, HubSpot, Zoho |
 | Email via SMTP (`EMAIL_TEST_MODE=true` sends everything to your test address) | WhatsApp |
 | LLM replies when a key is set (Groq / OpenAI / Ollama); rule-based templates otherwise | Google Calendar (no invites or video links) |
-| Semantic search with MiniLM embeddings | Phone calls and speech-to-text |
+| Semantic search with MiniLM embeddings | Phone calls (voice runs in the browser; speech recognition is the browser's, not our own model) |
 
 Every agent run writes one activity-log row with its **measured** duration in ms (AI Agents page). Dashboard numbers are computed from the database, and each shows its formula on hover: **Meeting rate** = distinct leads with ≥1 meeting ÷ total leads; **Win rate** = won leads ÷ total leads.
 

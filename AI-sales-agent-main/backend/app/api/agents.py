@@ -17,7 +17,7 @@ AGENT_INFO = {
     "Communication Agent": ("Replies and drafts", "Writes chat replies (LLM, or template without a key) and outreach drafts. Drafts are not sent.", "MessageSquare"),
     "Knowledge Agent": ("Document Q&A (RAG)", "Answers from retrieved knowledge chunks (MiniLM embeddings); a check blocks numbers that are not in the sources.", "BookOpen"),
     "Objection Agent": ("Objection playbook", "Handles price, minimum order, delivery, competitor and other objections with the retail playbook.", "ShieldAlert"),
-    "Voice Agent": ("Browser voice session", "Browser text-to-speech with keyword intents. No phone calls, no speech-to-text.", "PhoneCall"),
+    "Voice Agent": ("Browser voice call", "Speech recognition and speech output in the browser; each sentence goes through the same agents as chat. 4-line summary at the end. No phone calls.", "PhoneCall"),
     "Scheduling Agent": ("Meeting slots", "Proposes slots in showroom hours and books meetings in this app's database. No external calendar.", "Calendar"),
     "Follow-up Agent": ("Follow-up cadence", "Day 0/2/5/10 tasks. Email follow-ups are sent over SMTP; WhatsApp follow-ups are simulated (demo mode).", "Clock"),
     "CRM Agent": ("Internal CRM", "Updates stages and next actions in this app's own database (the internal CRM). No external CRM.", "Layers"),

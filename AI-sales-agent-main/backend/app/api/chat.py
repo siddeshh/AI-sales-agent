@@ -13,6 +13,42 @@ from app.services.activity import agent_run
 
 router = APIRouter(prefix="/chat", tags=["AI Conversations"])
 
+def run_customer_turn(lead: Lead, conv: Conversation, content: str, db: Session):
+    """One customer turn: orchestrator -> saved AI message -> re-score. Shared by chat and the voice call.
+    The customer's own message must already be saved in `conv`."""
+    ai_turn = WorkforceOrchestrator.handle_customer_message(lead, conv, content, db)
+
+    conv.current_intent = ai_turn["intent"]
+    conv.sentiment = ai_turn["sentiment"]
+    conv.updated_at = datetime.utcnow()
+
+    ai_msg = Message(
+        conversation_id=conv.id,
+        sender="ai_agent",
+        agent_name=ai_turn["active_agent"],
+        content=ai_turn["ai_reply"],
+        intent=ai_turn["intent"],
+        sentiment=ai_turn["sentiment"],
+        detected_objection=ai_turn["detected_objection"],
+        confidence=ai_turn["confidence"],  # classifier's own confidence; None when rules were used
+        provider=ai_turn["provider"],
+        sources_json=json.dumps(ai_turn.get("rag_sources") or []) if ai_turn.get("rag_sources") else None,
+        created_at=datetime.utcnow()
+    )
+    db.add(ai_msg)
+
+    db.flush()
+    with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
+        LeadQualificationAgent.apply(lead, db)
+        run["description"] = f"Re-scored {lead.name} after their message: {lead.lead_score}/100 ({lead.score_category})."
+    lead.last_contacted = datetime.utcnow()
+
+    db.commit()
+    db.refresh(ai_msg)
+    db.refresh(lead)
+    return ai_turn, ai_msg
+
+
 @router.get("/conversation/{lead_id}", response_model=ConversationOut)
 def get_or_create_conversation(lead_id: int, channel: str = "chat", db: Session = Depends(get_db)):
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
@@ -89,40 +125,7 @@ def send_chat_message(payload: ChatMessageCreate, db: Session = Depends(get_db))
             human_handoff_triggered=False
         )
 
-    # 2. Run Multi-Agent Orchestrator
-    ai_turn = WorkforceOrchestrator.handle_customer_message(lead, conv, payload.content, db)
-
-    # Update conversation metadata
-    conv.current_intent = ai_turn["intent"]
-    conv.sentiment = ai_turn["sentiment"]
-    conv.updated_at = datetime.utcnow()
-
-    # 3. Create AI Agent Message record
-    ai_msg = Message(
-        conversation_id=conv.id,
-        sender="ai_agent",
-        agent_name=ai_turn["active_agent"],
-        content=ai_turn["ai_reply"],
-        intent=ai_turn["intent"],
-        sentiment=ai_turn["sentiment"],
-        detected_objection=ai_turn["detected_objection"],
-        confidence=ai_turn["confidence"],  # classifier's own confidence; None when rules were used
-        provider=ai_turn["provider"],
-        sources_json=json.dumps(ai_turn.get("rag_sources") or []) if ai_turn.get("rag_sources") else None,
-        created_at=datetime.utcnow()
-    )
-    db.add(ai_msg)
-
-    # 4. Refresh lead score based on conversation engagement
-    db.flush()
-    with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
-        LeadQualificationAgent.apply(lead, db)
-        run["description"] = f"Re-scored {lead.name} after their message: {lead.lead_score}/100 ({lead.score_category})."
-    lead.last_contacted = datetime.utcnow()
-
-    db.commit()
-    db.refresh(ai_msg)
-    db.refresh(lead)
+    ai_turn, ai_msg = run_customer_turn(lead, conv, payload.content, db)
 
     return ChatResponse(
         conversation_id=conv.id,

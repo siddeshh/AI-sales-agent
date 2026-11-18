@@ -126,6 +126,7 @@ class CallSession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)  # the call's "voice" conversation
     caller_name = Column(String(100), nullable=False)
     phone_number = Column(String(30), nullable=True)
     status = Column(String(30), default="completed") # scheduled, in_progress, completed, missed

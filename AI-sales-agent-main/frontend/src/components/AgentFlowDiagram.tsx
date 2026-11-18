@@ -47,7 +47,7 @@ export const AgentFlowDiagram: React.FC = () => (
 
     <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
       Also: <span className="badge badge-gray">Follow-up Agent: email via SMTP, WhatsApp simulated</span>
-      <span className="badge badge-gray">Voice Agent: browser voice session</span>
+      <span className="badge badge-gray">Voice Agent: browser voice call, same agents as chat</span>
       <span className="badge badge-gray">Analytics Agent: dashboard numbers</span>
     </div>
   </div>
