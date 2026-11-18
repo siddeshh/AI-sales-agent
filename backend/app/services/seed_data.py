@@ -1,347 +1,310 @@
-from datetime import datetime, timedelta
+"""Demo dataset: Celestial Wear, a D2C apparel brand that also takes bulk / wholesale orders.
+
+Everything here is fictional demo data. Scores, BANT and research are computed by the real agents at seed
+time (not hardcoded), so the factor breakdown shown in the UI matches the scoring code.
+"""
 import json
+from datetime import datetime, timedelta
+
 from sqlalchemy.orm import Session
+
 from app.models.entities import (
-    User, Lead, LeadScoreFactor, Conversation, Message, 
-    KnowledgeDocument, KnowledgeChunk, FollowUp, Meeting, 
-    ObjectionRecord, AgentActivityLog
+    User, Lead, Conversation, Message, KnowledgeDocument, KnowledgeChunk, FollowUp, Meeting,
+    ObjectionRecord,
 )
-from app.rag.engine import EmbeddingEngine
+from app.rag.engine import DocumentChunker, index_chunks
+from app.services.activity import agent_run
+
+# --------------------------------------------------------------------------- knowledge base
+KNOWLEDGE_DOCS = [
+    ("Celestial Wear Product Catalogue 2026", "product_catalogue_2026.txt", "Catalogue", """
+Celestial Wear product catalogue 2026. Retail prices (MRP) per piece, inclusive of GST, for online orders on celestialwear.in.
+Classic Crew Tee: 180 GSM combed cotton, regular fit, sizes XS to 3XL, 14 colours. MRP ₹549.
+Heavyweight Oversized Tee: 240 GSM cotton, drop shoulder, sizes S to 3XL, 8 colours. MRP ₹799.
+Pique Polo: 220 GSM cotton pique, two-button placket, sizes S to 3XL, 10 colours. MRP ₹899.
+French Terry Hoodie: 320 GSM cotton French terry, kangaroo pocket, sizes S to 3XL, 6 colours. MRP ₹1,599.
+Zip-Up Hoodie: 320 GSM, metal zip, sizes S to 3XL, 4 colours. MRP ₹1,899.
+Crewneck Sweatshirt: 300 GSM fleece-back cotton, sizes S to 3XL, 6 colours. MRP ₹1,299.
+Linen-Blend Kurta: 55% linen 45% cotton, straight cut, sizes S to 3XL, 5 colours. MRP ₹1,499.
+Relaxed Joggers: 280 GSM French terry, elastic waist with drawcord, sizes S to 3XL, 4 colours. MRP ₹1,199.
+Cotton Twill Cap: adjustable strap, one size, 8 colours. MRP ₹449.
+Canvas Tote Bag: 12 oz cotton canvas, 38 x 42 cm. MRP ₹399.
+All garments are pre-shrunk and made with our manufacturing partner in Tiruppur. Size charts are on each product page.
+Showroom: Celestial Wear Studio, Indiranagar, Bengaluru, open Monday to Saturday, 11 AM to 7 PM, by appointment for bulk buyers.
+"""),
+    ("Bulk Order Price List 2026", "bulk_price_list_2026.txt", "Pricing", """
+Celestial Wear bulk order price list 2026. Prices per piece in rupees, excluding GST, plain garments.
+Minimum order quantity (MOQ) for bulk pricing is 50 pieces per style; colours and sizes can be mixed within a style.
+Volume slabs: 50-99 pieces 15% off MRP, 100-249 pieces 22% off, 250-499 pieces 28% off, 500 or more pieces 35% off.
+Classic Crew Tee: 50+ ₹467, 100+ ₹428, 250+ ₹395, 500+ ₹357.
+Heavyweight Oversized Tee: 50+ ₹679, 100+ ₹623, 250+ ₹575, 500+ ₹519.
+Pique Polo: 50+ ₹764, 100+ ₹701, 250+ ₹647, 500+ ₹584.
+French Terry Hoodie: 50+ ₹1,359, 100+ ₹1,247, 250+ ₹1,151, 500+ ₹1,039.
+Zip-Up Hoodie: 50+ ₹1,614, 100+ ₹1,481, 250+ ₹1,367, 500+ ₹1,234.
+Crewneck Sweatshirt: 50+ ₹1,104, 100+ ₹1,013, 250+ ₹935, 500+ ₹844.
+Linen-Blend Kurta: 50+ ₹1,274, 100+ ₹1,169, 250+ ₹1,079, 500+ ₹974.
+Relaxed Joggers: 50+ ₹1,019, 100+ ₹935, 250+ ₹863, 500+ ₹779.
+Cotton Twill Cap: 50+ ₹382, 100+ ₹350, 250+ ₹323, 500+ ₹292.
+Canvas Tote Bag: 50+ ₹339, 100+ ₹311, 250+ ₹287, 500+ ₹259.
+Trial order: 20 to 49 pieces of one style at 10% off MRP, plain or one-colour print, so buyers can check quality before a full bulk order.
+Printing and embroidery are charged extra (see the customisation FAQ). GST is added at invoicing.
+Payment: 50% advance with the order, balance before dispatch. Quotes are valid for 30 days.
+"""),
+    ("Shipping and Returns Policy", "shipping_returns_policy.txt", "Policy", """
+Celestial Wear shipping and returns policy.
+Online orders: dispatched within 1-2 business days. Delivery takes 3-5 business days to metro cities and 5-7 business days elsewhere in India. Shipping is free on orders above ₹999, otherwise ₹79.
+Bulk orders, plain garments: production and dispatch in 7-10 business days after the advance payment.
+Bulk orders, printed or embroidered: 12-15 business days after artwork approval.
+Express production: 5-7 business days for bulk orders up to 250 pieces, at a 12% surcharge on the order value. Subject to fabric availability; confirmed at the time of order.
+Bulk shipping is free for orders above ₹50,000; below that a fixed ₹1,500 per consignment. We ship across India through courier partners and share tracking for every carton. We do not ship outside India yet.
+Returns for online orders: 15-day returns or exchanges for unworn items with tags.
+Returns for bulk orders: defective pieces are replaced free if reported with photos within 7 days of delivery. Customised (printed or embroidered) pieces cannot be returned except for defects.
+Size exchanges on plain bulk orders are accepted within 7 days of delivery, up to 5% of the order quantity.
+"""),
+    ("Customisation and Printing FAQ", "customisation_faq.txt", "FAQ", """
+Celestial Wear customisation and printing FAQ.
+Screen printing: from 50 pieces. ₹35 per piece for one colour, plus ₹15 per piece for each extra colour, up to 6 colours. One-time screen setup ₹600 per colour.
+DTF printing: no minimum quantity. ₹90 per print up to A4 size, ₹150 per print up to A3 size. Best for full-colour artwork and small batches.
+Embroidery: ₹70 per piece up to 8,000 stitches (a typical left-chest logo), ₹110 per piece up to 15,000 stitches.
+Custom woven neck labels: from 250 pieces, ₹12 per piece.
+Print positions: front, back, left chest, sleeve. Maximum print area is A3.
+Artwork: send AI, PDF or PNG at 300 dpi. We share a digital mockup within 48 hours, and production starts only after you approve it.
+Samples: a physical sample costs ₹499 per piece and is adjusted against the bulk order. One free sample is included for orders of 250 pieces or more.
+Custom colour dyeing is available from 500 pieces per colour.
+Lead times for customised orders are in the shipping and returns policy.
+"""),
+]
+
+# --------------------------------------------------------------------------- leads
+# (name, email, phone, company, job_title, location, budget, budget_numeric, requirements, qty, buyer_type,
+#  timeline, source, stage)
+LEADS = [
+    ("Priya Nair", "priya@threadlineboutique.in", "+91 98470 31245", "Threadline Boutique", "Founder", "Kochi",
+     "₹1,20,000", 120000, "Mixed tees and linen-blend kurtas for festive collection", 150, "wholesale",
+     "Within 3 weeks", "Instagram", "Meeting Scheduled"),
+    ("Arjun Mehta", "arjun@urbandrip.store", "+91 99250 66710", "UrbanDrip (Instagram store)", "Owner", "Ahmedabad",
+     "₹2,80,000", 280000, "Heavyweight oversized tees, black and off-white, for resale", 500, "wholesale",
+     "Within 30 days", "Instagram", "Negotiation"),
+    ("Sneha Kulkarni", "sneha.k@finvolve.co", "+91 98220 47813", "Finvolve Technologies", "HR Manager", "Pune",
+     "₹3,50,000", 350000, "French terry hoodies with embroidered logo for company offsite", 250, "corporate",
+     "Within 2 weeks", "Website Form", "Meeting Scheduled"),
+    ("Rohit Verma", "rohit.verma@vcen.edu.in", "+91 97300 12958", "Vidyanagar College of Engineering",
+     "Cultural Secretary", "Nagpur", "₹1,60,000", 160000, "Printed fest tees, 2-colour front print", 400,
+     "corporate", "Within 10 days", "WhatsApp", "Qualified"),
+    ("Fatima Sheikh", "fatima@noorcollections.in", "+91 90000 84512", "Noor Collections", "Proprietor", "Hyderabad",
+     "₹95,000", 95000, "Linen-blend kurtas in pastel colours", 80, "wholesale", "Next month", "Trade Fair",
+     "Contacted"),
+    ("Karan Malhotra", "karan.m@brightpathlogistics.in", "+91 98110 23657", "Brightpath Logistics",
+     "Admin & Facilities Lead", "Gurugram", "₹1,00,000", 100000, "Pique polos with left-chest logo as staff uniform",
+     120, "corporate", "Within 45 days", "Website Form", "New"),
+    ("Ananya Iyer", "ananya@thriftythreads.in", "+91 98840 77231", "ThriftyThreads by Ananya", "Owner", "Chennai",
+     "₹20,000", 20000, "Small test batch of oversized tees for Instagram store", 40, "wholesale", "Exploring",
+     "Instagram", "Engaged"),
+    ("Vikram Singh", "vikram@singhsports.in", "+91 94140 55320", "Singh Sports & Apparel", "Owner", "Jaipur",
+     "₹3,60,000", 360000, "Plain classic crew tees in bulk for store stock", 1000, "wholesale", "Within 2 months",
+     "Trade Fair", "Contacted"),
+    ("Meera Joshi", "meera@sahyadrisummit.in", "+91 98500 61844", "Sahyadri Startup Summit", "Events Head", "Pune",
+     "₹2,40,000", 240000, "Printed tees and canvas totes for summit delegates", 600, "corporate", "Within 3 weeks",
+     "WhatsApp", "Proposal"),
+    ("Imran Qureshi", "imran@kurtakraft.in", "+91 99350 40277", "Kurta Kraft", "Co-founder", "Lucknow",
+     "₹2,50,000", 250000, "Linen-blend kurtas for online resale", 200, "wholesale", "Within 2 months",
+     "CSV Import", "New"),
+    ("Divya Reddy", "divya.reddy@gmail.com", "+91 98450 19366", None, None, "Bengaluru", "₹18,000", 18000,
+     "Custom printed tees for a family wedding", 30, "individual", "Within 10 days", "Website Form", "Lost"),
+    ("Harsh Agarwal", "harsh@zenmartretail.in", "+91 98300 72519", "Zenmart Retail (3 stores)",
+     "Procurement Manager", "Kolkata", "₹5,00,000", 500000, "Crewneck sweatshirts for winter stock", 600,
+     "wholesale", "Within 6 weeks", "CSV Import", "Engaged"),
+]
+
+# --------------------------------------------------------------------------- conversations
+# lead name → (channel, sentiment, intent, summary, [(sender, agent, text, intent, sentiment, objection)])
+CONVERSATIONS = {
+    "Sneha Kulkarni": ("chat", "Positive", "ready_to_buy",
+        "250 embroidered hoodies for an offsite; delivery-time concern handled with express production; sample call booked.", [
+        ("customer", None, "Hi, we need around 250 hoodies with our logo embroidered for a company offsite.", "question", "Neutral", None),
+        ("ai_agent", "Knowledge Agent", "Our French Terry Hoodie is ₹1,151 per piece at the 250+ slab, and left-chest embroidery up to 8,000 stitches is ₹70 per piece. Would you like a mockup of your logo?", "question", "Neutral", None),
+        ("customer", None, "The offsite is in 12 days. Your normal lead time is too long for us.", "objection", "Hesitant", "delivery"),
+        ("ai_agent", "Objection Agent", "Understood. Express production takes 5-7 business days for orders up to 250 pieces, at a 12% surcharge, so we can still make your date once the artwork is approved. Shall I set up a quick sample review call?", "objection", "Hesitant", "delivery"),
+        ("customer", None, "Yes, let's do a call tomorrow afternoon.", "ready_to_buy", "Positive", None),
+    ]),
+    "Arjun Mehta": ("whatsapp", "Hesitant", "objection",
+        "500 oversized tees for resale; price objection answered with the 500+ slab.", [
+        ("customer", None, "What's your best price for 500 oversized tees?", "question", "Neutral", None),
+        ("ai_agent", "Knowledge Agent", "For 500 or more Heavyweight Oversized Tees the bulk price is ₹519 per piece, excluding GST, with colours and sizes mixable.", "question", "Neutral", None),
+        ("customer", None, "That's too expensive, I get similar tees for less.", "objection", "Hesitant", "price"),
+        ("ai_agent", "Objection Agent", "I hear you. ₹519 is already our deepest slab at 35% off MRP, for 240 GSM pre-shrunk cotton that holds up to resale. Would a sample piece help you compare quality before you decide?", "objection", "Hesitant", "price"),
+    ]),
+    "Ananya Iyer": ("chat", "Neutral", "objection",
+        "Wants 40 tees to test; MOQ objection answered with the trial order.", [
+        ("customer", None, "I only need about 40 tees to test my Instagram store. Is that possible?", "objection", "Neutral", "moq"),
+        ("ai_agent", "Objection Agent", "Yes. Bulk pricing starts at 50 pieces, but our trial order covers 20 to 49 pieces of one style at 10% off MRP, plain or one-colour print. Would you like to start with that?", "objection", "Neutral", "moq"),
+        ("customer", None, "Okay, send me the colours available for the oversized tee.", "question", "Positive", None),
+    ]),
+    "Harsh Agarwal": ("email", "Hesitant", "objection",
+        "600 sweatshirts for 3 stores; comparing with another supplier.", [
+        ("customer", None, "We are also getting quotes from a supplier in Ludhiana who is cheaper for sweatshirts.", "objection", "Hesitant", "competitor"),
+        ("ai_agent", "Objection Agent", "That makes sense to compare. Our Crewneck Sweatshirt is 300 GSM fleece-back cotton, we can add your store labels from 250 pieces, and defective pieces are replaced free if reported within 7 days. Shall I send a sample so you can compare side by side?", "objection", "Hesitant", "competitor"),
+    ]),
+    "Priya Nair": ("chat", "Positive", "ready_to_buy",
+        "Boutique owner planning a festive collection; showroom visit booked.", [
+        ("customer", None, "Do you have linen kurtas in pastel colours? I run a boutique in Kochi.", "question", "Neutral", None),
+        ("ai_agent", "Knowledge Agent", "Yes, our Linen-Blend Kurta (55% linen, 45% cotton) comes in 5 colours, sizes S to 3XL, and is ₹1,169 per piece at the 100+ slab. Would you like to see the fabric in person?", "question", "Neutral", None),
+        ("customer", None, "I'll be in Bengaluru next week, can I visit the showroom?", "ready_to_buy", "Positive", None),
+    ]),
+}
+
+# BANT evidence for leads with seeded conversations, in the same shape the LLM writes (Lead.bant_json).
+# Quotes are verbatim from the seeded messages above or from the lead form ("Lead form: ...").
+SEED_BANT = {
+    "Sneha Kulkarni": {"budget": ("partial", "Lead form: ₹3,50,000"), "authority": ("partial", "Lead form: HR Manager"),
+                       "need": ("confirmed", "we need around 250 hoodies with our logo embroidered"),
+                       "timeline": ("confirmed", "The offsite is in 12 days.")},
+    "Arjun Mehta": {"budget": ("partial", "That's too expensive, I get similar tees for less."),
+                    "authority": ("partial", "Lead form: Owner"),
+                    "need": ("confirmed", "What's your best price for 500 oversized tees?"),
+                    "timeline": ("partial", "Lead form: Within 30 days")},
+    "Ananya Iyer": {"budget": ("absent", ""), "authority": ("partial", "Lead form: Owner"),
+                    "need": ("confirmed", "I only need about 40 tees to test my Instagram store."),
+                    "timeline": ("absent", "")},
+    "Harsh Agarwal": {"budget": ("partial", "Lead form: ₹5,00,000"), "authority": ("partial", "Lead form: Procurement Manager"),
+                      "need": ("partial", "getting quotes from a supplier in Ludhiana who is cheaper for sweatshirts"),
+                      "timeline": ("partial", "Lead form: Within 6 weeks")},
+    "Priya Nair": {"budget": ("partial", "Lead form: ₹1,20,000"),
+                   "authority": ("confirmed", "I run a boutique in Kochi."),
+                   "need": ("confirmed", "Do you have linen kurtas in pastel colours?"),
+                   "timeline": ("partial", "I'll be in Bengaluru next week")},
+}
+
+# Documents each seeded Knowledge answer quotes (titles only: these answers were written for the seed, not retrieved)
+SEED_SOURCES = {
+    "Sneha Kulkarni": ["Bulk Order Price List 2026", "Customisation and Printing FAQ"],
+    "Arjun Mehta": ["Bulk Order Price List 2026"],
+    "Priya Nair": ["Celestial Wear Product Catalogue 2026", "Bulk Order Price List 2026"],
+}
+
+OBJECTION_TECHNIQUES = {"delivery": "Express production option", "price": "Volume-slab pricing and value",
+                        "moq": "Smaller trial order", "competitor": "Quality, customisation and returns policy"}
+
 
 def seed_database(db: Session):
-    """
-    Seeds initial enterprise data:
-    - Default user accounts
-    - Knowledge base documents & chunks with embeddings
-    - Rahul Sharma, Priya Mehta, Amit Patil leads
-    - Score breakdown factors
-    - Real-estate conversations and chat history
-    - Upcoming meetings & scheduled follow-ups
-    - Agent audit logs
-    """
-    # 1. Users
+    """Seeds an empty database. Called at startup and by POST /api/demo/reset."""
+    from app.agents.lead_research_agent import LeadResearchAgent
+    from app.agents.qualification_agent import LeadQualificationAgent
+
     if db.query(User).count() == 0:
-        demo_user = User(
-            username="salesrep",
-            email="sales@skylineestates.com",
-            hashed_password="demo_hashed_password_placeholder",
-            full_name="Alex Turner",
-            role="sales_rep",
-            is_active=True
-        )
-        manager_user = User(
-            username="manager",
-            email="manager@skylineestates.com",
-            hashed_password="demo_hashed_password_placeholder",
-            full_name="Sarah Jenkins",
-            role="sales_manager",
-            is_active=True
-        )
-        db.add_all([demo_user, manager_user])
+        db.add_all([
+            User(username="salesrep", email="sales@celestialwear.in", hashed_password="demo_hashed_password_placeholder",
+                 full_name="Alex Turner", role="sales_rep", is_active=True),
+            User(username="manager", email="manager@celestialwear.in", hashed_password="demo_hashed_password_placeholder",
+                 full_name="Sarah Jenkins", role="sales_manager", is_active=True),
+        ])
         db.commit()
 
-    # 2. Knowledge Base Documents & Chunks
     if db.query(KnowledgeDocument).count() == 0:
-        doc1 = KnowledgeDocument(
-            title="Skyline Greens Pune - Master Brochure & Pricing 2026",
-            filename="skyline_greens_master_brochure.pdf",
-            file_type="pdf",
-            category="Brochure",
-            industry="real_estate",
-            total_chunks=3,
-            file_size_bytes=4120000,
-            is_processed=True
-        )
-        doc2 = KnowledgeDocument(
-            title="MahaRERA Certifications, Approvals & Bank Loan Partners",
-            filename="legal_approvals_rera.pdf",
-            file_type="pdf",
-            category="Policy",
-            industry="real_estate",
-            total_chunks=2,
-            file_size_bytes=2400000,
-            is_processed=True
-        )
-        doc3 = KnowledgeDocument(
-            title="Payment Plans, Subvention Schemes & Stamp Duty Schedule",
-            filename="payment_milestones_2026.pdf",
-            file_type="pdf",
-            category="Pricing",
-            industry="real_estate",
-            total_chunks=2,
-            file_size_bytes=1800000,
-            is_processed=True
-        )
-        db.add_all([doc1, doc2, doc3])
+        chunks = []
+        for title, filename, category, text in KNOWLEDGE_DOCS:
+            body = " ".join(text.split())
+            parts = DocumentChunker.chunk_text(body)
+            doc = KnowledgeDocument(title=title, filename=filename, file_type="txt", category=category,
+                                    industry="retail", total_chunks=len(parts),
+                                    file_size_bytes=len(body.encode("utf-8")), is_processed=True)
+            db.add(doc)
+            db.flush()
+            chunks += [KnowledgeChunk(document_id=doc.id, chunk_index=i, content=p) for i, p in enumerate(parts)]
+        db.add_all(chunks)
+        db.flush()  # ids needed before indexing
+        index_chunks(db, chunks)
         db.commit()
 
-        # Seed Chunks
-        chunks_payload = [
-            (doc1.id, 0, "Skyline Greens Hinjawadi Phase 1, Pune. 2 BHK Premium residences start at ₹78 lakh all-inclusive (745 to 820 sq.ft carpet). 3 BHK Ultra-Luxury residences start at ₹1.15 crore (1,050 to 1,220 sq.ft carpet). All units feature East-West Vastu alignment, large sundeck balconies, and zero corridor wastage."),
-            (doc1.id, 1, "World-class amenities span across 3 acres: 25,000 sq.ft signature clubhouse, temperature-controlled infinity pool, Olympic-size indoor squash courts, CrossFit gymnasium, senior citizen wellness plaza, and EV charging points in every dedicated car parking bay."),
-            (doc1.id, 2, "Connectivity advantage: Situated 4 minutes from Embassy TechZone, 7 minutes from upcoming Metro Line 3 station, and 25 minutes from Pune-Mumbai Expressway junction. 8 top international schools within a 5 km radius."),
-            (doc2.id, 0, "MahaRERA Registration Number: P52100034981. Possession guaranteed on or before December 2026 with RERA defect liability protection for 5 years post-handover. Freehold land title certified by Kanga & Co."),
-            (doc2.id, 1, "Approved by top Tier-1 financial institutions: State Bank of India (SBI), HDFC Bank, ICICI Bank, and Axis Bank. Home loan pre-approval offers available up to 90% of total property value with special interest rate concessions from 8.35% onwards."),
-            (doc3.id, 0, "Special Payment Plan: 10:90 Developer Subvention Scheme. Pay 10% on booking token, 0% EMI during entire construction phase, and balance 90% only upon possession. Zero pre-EMI interest burden for home buyers."),
-            (doc3.id, 1, "Construction-Linked Milestone Plan provides an outright 3% early-booking rebate. Maintenance charges are fixed at ₹3.50 per sq.ft/month for the initial 24 months, deposited in an escrow maintenance account.")
-        ]
+    if db.query(Lead).count() > 0:
+        return
 
-        for d_id, idx, content in chunks_payload:
-            emb = EmbeddingEngine.generate_embedding(content)
-            chunk = KnowledgeChunk(
-                document_id=d_id,
-                chunk_index=idx,
-                content=content,
-                metadata_json=json.dumps({"word_count": len(content.split())}),
-                embedding_json=json.dumps(emb)
-            )
-            db.add(chunk)
-        db.commit()
+    now = datetime.utcnow()
+    leads = {}
+    for i, (name, email, phone, company, title, city, budget, budget_num, req, qty, btype, timeline, source,
+            stage) in enumerate(LEADS):
+        lead = Lead(name=name, email=email, phone=phone, company=company, industry="retail", job_title=title,
+                    location=city, budget=budget, budget_numeric=budget_num, requirements=req, order_quantity=qty,
+                    buyer_type=btype, timeline=timeline, source=source, stage=stage,
+                    created_at=now - timedelta(days=12 - i))
+        db.add(lead)
+        db.flush()
+        leads[name] = lead
 
-    # 3. Sample Real-Estate Leads
-    if db.query(Lead).count() == 0:
-        lead1 = Lead(
-            name="Rahul Sharma",
-            email="rahul.sharma@techcorp.in",
-            phone="+91 98201 44821",
-            company="Infosys / TechCorp",
-            industry="real_estate",
-            job_title="Principal Cloud Architect",
-            location="Pune",
-            budget="₹80 lakh",
-            budget_numeric=8000000.0,
-            requirements="2 BHK, East-facing, Hinjawadi Phase 1, near IT Park with covered parking",
-            timeline="Within 30 days",
-            source="Website Form",
-            lead_score=87,
-            conversion_probability=0.82,
-            score_category="Hot",
-            stage="Engaged",
-            qualification_status="Qualified",
-            budget_qualified=True,
-            authority_qualified=True,
-            need_qualified=True,
-            timeline_qualified=True,
-            research_summary="Principal Cloud Architect with stable corporate background. Moving closer to Hinjawadi IT cluster to eliminate daily commute. Actively pre-approved for HDFC home loan.",
-            pain_points="Commute time in Hinjawadi traffic; wants reliable possession timeline and peaceful gated society for growing family.",
-            buying_intent="High",
-            next_best_action="Schedule VIP Site Visit for Saturday 11 AM",
-            next_best_action_reason="Prospect has confirmed BANT qualification, matches ₹80L inventory, and requested site walkthrough.",
-            assigned_rep="AI Sales Workforce",
-            created_at=datetime.utcnow() - timedelta(days=2)
-        )
-
-        lead2 = Lead(
-            name="Priya Mehta",
-            email="priya.mehta@finvest.com",
-            phone="+91 98112 77340",
-            company="Morgan Stanley / Finvest",
-            industry="real_estate",
-            job_title="Vice President - Investment Banking",
-            location="Mumbai",
-            budget="₹1.2 crore",
-            budget_numeric=12000000.0,
-            requirements="3 BHK Luxury, Sea/Green view, High Floor, Clubhouse amenities",
-            timeline="Within 60 days",
-            source="Meta Ads",
-            lead_score=92,
-            conversion_probability=0.88,
-            score_category="Hot",
-            stage="Meeting Scheduled",
-            qualification_status="Qualified",
-            budget_qualified=True,
-            authority_qualified=True,
-            need_qualified=True,
-            timeline_qualified=True,
-            research_summary="Senior Investment Banking VP seeking prime investment property or weekend residence. Highly responsive to digital brochures.",
-            pain_points="Demands premium construction finishes, high security, and clear title documentation.",
-            buying_intent="Urgent",
-            next_best_action="Conduct 3D Virtual Presentation & Prepare Site Welcome Kit",
-            next_best_action_reason="Site visit confirmed for Sunday. Needs bespoke high-floor pricing package.",
-            assigned_rep="AI Sales Workforce",
-            created_at=datetime.utcnow() - timedelta(days=4)
-        )
-
-        lead3 = Lead(
-            name="Amit Patil",
-            email="amit.patil@nashikauto.co",
-            phone="+91 97654 33219",
-            company="Patil Auto Components",
-            industry="real_estate",
-            job_title="Managing Director",
-            location="Nashik",
-            budget="₹55 lakh",
-            budget_numeric=5500000.0,
-            requirements="1/2 BHK compact investment unit for rental yield",
-            timeline="Within 90 days",
-            source="MagicBricks",
-            lead_score=58,
-            conversion_probability=0.55,
-            score_category="Warm",
-            stage="Contacted",
-            qualification_status="Partially Qualified",
-            budget_qualified=True,
-            authority_qualified=True,
-            need_qualified=False,
-            timeline_qualified=False,
-            research_summary="Business owner seeking Pune rental property for long-term passive rental yield. Comparing multiple suburbs.",
-            pain_points="Price sensitivity; wants high rental yield (minimum 5% gross) and low upfront maintenance.",
-            buying_intent="Medium",
-            next_best_action="Send Rental Yield ROI Calculation Report",
-            next_best_action_reason="Needs proof of rental demand before committing to site visit.",
-            assigned_rep="AI Sales Workforce",
-            created_at=datetime.utcnow() - timedelta(days=6)
-        )
-
-        db.add_all([lead1, lead2, lead3])
-        db.commit()
-
-        # Score factors for Rahul Sharma
-        f1 = LeadScoreFactor(lead_id=lead1.id, factor_name="High Budget Match", score_impact=25, explanation="Budget of ₹80L perfectly aligns with 2 BHK inventory (₹78L-₹82L)", category="Budget")
-        f2 = LeadScoreFactor(lead_id=lead1.id, factor_name="Urgent Timeline", score_impact=20, explanation="30-day purchasing timeline signifies imminent buying readiness", category="Timeline")
-        f3 = LeadScoreFactor(lead_id=lead1.id, factor_name="Specific Requirements", score_impact=15, explanation="Clear criteria: 2 BHK, East-facing, Hinjawadi location", category="Need")
-        f4 = LeadScoreFactor(lead_id=lead1.id, factor_name="High Two-Way Engagement", score_impact=15, explanation="Actively engaged across chat and WhatsApp outreach", category="Engagement")
-        f5 = LeadScoreFactor(lead_id=lead1.id, factor_name="Prime Inbound Source", score_impact=12, explanation="Inbound direct website inquiry with verified contact number", category="Fit")
-        db.add_all([f1, f2, f3, f4, f5])
-
-        # Conversations for Rahul Sharma
-        conv = Conversation(
-            lead_id=lead1.id,
-            channel="chat",
-            status="active",
-            sentiment="Positive",
-            current_intent="Pricing & Site Visit",
-            human_requested=False,
-            summary="Prospect inquiring on 2 BHK pricing and floor plans; objections around price handled using subvention financing."
-        )
+    # Conversations first, so engagement counts real customer messages when scoring.
+    for name, (channel, sentiment, intent, summary, msgs) in CONVERSATIONS.items():
+        lead = leads[name]
+        conv = Conversation(lead_id=lead.id, channel=channel, status="active", sentiment=sentiment,
+                            current_intent=intent, summary=summary, created_at=now - timedelta(days=3))
         db.add(conv)
-        db.commit()
+        db.flush()
+        for j, (sender, agent, text, m_intent, m_sent, objection) in enumerate(msgs):
+            at = now - timedelta(days=3) + timedelta(minutes=7 * j)
+            db.add(Message(conversation_id=conv.id, sender=sender, agent_name=agent, content=text, intent=m_intent,
+                           sentiment=m_sent, detected_objection=objection,
+                           provider="demo seed" if sender == "ai_agent" else None, created_at=at,
+                           sources_json=json.dumps([{"title": t} for t in SEED_SOURCES.get(name, [])])
+                           if agent == "Knowledge Agent" else None))
+            if sender == "customer" and objection:
+                reply = msgs[j + 1][2]
+                db.add(ObjectionRecord(lead_id=lead.id, conversation_id=conv.id, objection_type=objection,
+                                       customer_statement=text, handled_response=reply,
+                                       technique_used=OBJECTION_TECHNIQUES[objection], resolution_status="Addressed",
+                                       created_at=at))
+        lead.last_contacted = now - timedelta(days=3)
+    db.flush()
 
-        m1 = Message(
-            conversation_id=conv.id,
-            sender="customer",
-            content="Hello, I am looking for a 2 BHK apartment in Pune under ₹80 lakh near Hinjawadi.",
-            intent="Property Inquiry",
-            sentiment="Positive",
-            created_at=datetime.utcnow() - timedelta(hours=3)
-        )
-        m2 = Message(
-            conversation_id=conv.id,
-            sender="ai_agent",
-            agent_name="Sales Communication Agent",
-            content="Hello Rahul! I'd be delighted to assist. In our Skyline Greens Phase 1 township at Hinjawadi, 2 BHK residences start at ₹78 lakh all-inclusive. Are you looking for immediate possession or flexible payment milestone plans?",
-            intent="Clarification & Pitch",
-            sentiment="Positive",
-            created_at=datetime.utcnow() - timedelta(hours=2, minutes=58)
-        )
-        m3 = Message(
-            conversation_id=conv.id,
-            sender="customer",
-            content="₹80 lakh is slightly on the higher side of my budget. Are there hidden charges or discounts?",
-            intent="Price Objection",
-            sentiment="Hesitant",
-            detected_objection="price",
-            created_at=datetime.utcnow() - timedelta(hours=2, minutes=30)
-        )
-        m4 = Message(
-            conversation_id=conv.id,
-            sender="ai_agent",
-            agent_name="Objection Handling Agent",
-            content="I completely understand your concern, Rahul. The ₹78 lakh pricing is fully inclusive of clubhouse lifetime membership and designated covered parking. Additionally, with our 10:90 bank subvention scheme with HDFC, you only pay 10% now with zero EMI until possession. Would you like to review this on-site this Saturday?",
-            intent="Objection Resolution: Value Reframing",
-            sentiment="Positive",
-            created_at=datetime.utcnow() - timedelta(hours=2, minutes=29)
-        )
-        db.add_all([m1, m2, m3, m4])
+    for lead in leads.values():
+        # Real agent runs at seed time; each writes a timed activity-log row.
+        with agent_run(db, "Research Agent", "research", lead) as run:
+            research = LeadResearchAgent.research_lead(lead)
+            lead.research_summary, lead.pain_points = research["research_summary"], research["pain_points"]
+            lead.buying_intent = research["buying_intent"]
+            run["description"] = f"Profiled {lead.name} as a {research['persona_type'].lower()} (demo data load)."
+        with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
+            LeadQualificationAgent.apply_bant_checklist(lead)
+            if lead.name in SEED_BANT:
+                lead.bant_json = json.dumps({k: {"status": st, "evidence": ev} for k, (st, ev) in SEED_BANT[lead.name].items()})
+            score = LeadQualificationAgent.apply(lead, db)
+            run["description"] = f"Scored {lead.name} {score['lead_score']}/100 ({score['score_category']}) (demo data load)."
+        lead.next_best_action = research["next_best_action"]
 
-        # Scheduled Meeting for Priya Mehta
-        meet = Meeting(
-            lead_id=lead2.id,
-            title="VIP 3 BHK Penthouse Walkthrough & Financial Structuring",
-            meeting_type="site_visit",
-            scheduled_time=datetime.utcnow() + timedelta(days=1, hours=4),
-            duration_minutes=60,
-            status="scheduled",
-            location_or_link="Skyline Experience Centre, Tower B Suite 14, Hinjawadi",
-            notes="Client arriving from Mumbai; requested high-floor panoramic view inspection."
-        )
-        db.add(meet)
+    # Next actions for leads in active conversations
+    leads["Sneha Kulkarni"].next_best_action = "Run sample review call and confirm express production"
+    leads["Arjun Mehta"].next_best_action = "Send a sample piece and the 500+ slab quote"
+    leads["Ananya Iyer"].next_best_action = "Share oversized tee colours and trial-order details"
+    leads["Harsh Agarwal"].next_best_action = "Dispatch a sweatshirt sample for comparison"
+    leads["Priya Nair"].next_best_action = "Prepare kurta fabric swatches for the showroom visit"
 
-        # Follow-ups for Rahul Sharma & Amit Patil
-        fu1 = FollowUp(
-            lead_id=lead1.id,
-            cadence_step=2,
-            due_date=datetime.utcnow() + timedelta(days=1),
-            status="pending",
-            channel="whatsapp",
-            title="Day 2: Share 3D Virtual Tour & Site Location Pin",
-            message_content="Hi Rahul! Sharing our 2-minute 3D virtual tour of the 2 BHK model residence and the location pin for Saturday's visit."
-        )
-        fu2 = FollowUp(
-            lead_id=lead3.id,
-            cadence_step=0,
-            due_date=datetime.utcnow() + timedelta(hours=6),
-            status="pending",
-            channel="email",
-            title="Day 0: Rental Yield Comparison Analysis",
-            message_content="Dear Amit, attached is the detailed 5-year capital appreciation and gross rental yield report for Hinjawadi 1/2 BHK units."
-        )
-        db.add_all([fu1, fu2])
+    day = (now + timedelta(days=1)).replace(hour=14, minute=0, second=0, microsecond=0)
+    db.add_all([
+        Meeting(lead_id=leads["Sneha Kulkarni"].id, title="Sample review call: embroidered hoodies, Finvolve",
+                meeting_type="product_demo", scheduled_time=day, duration_minutes=30, status="scheduled",
+                location_or_link="Video call (link not generated)", notes="Review logo mockup and confirm express production."),
+        Meeting(lead_id=leads["Priya Nair"].id, title="Showroom visit: Threadline Boutique festive collection",
+                meeting_type="showroom_visit", scheduled_time=day + timedelta(days=5, hours=-3), duration_minutes=60,
+                status="scheduled", location_or_link="Celestial Wear Studio, Indiranagar, Bengaluru",
+                notes="Show linen-blend kurta colours and crew tee fabric."),
+        Meeting(lead_id=leads["Arjun Mehta"].id, title="Product demo: oversized tee quality check, UrbanDrip",
+                meeting_type="product_demo", scheduled_time=day + timedelta(days=2, hours=-2), duration_minutes=30,
+                status="scheduled", location_or_link="Video call (link not generated)", notes="Walk through fabric weight and print options."),
+    ])
 
-        # Objection record
-        obj = ObjectionRecord(
-            lead_id=lead1.id,
-            conversation_id=conv.id,
-            objection_type="price",
-            customer_statement="₹80 lakh is slightly on the higher side of my budget. Are there hidden charges or discounts?",
-            handled_response="I completely understand your concern, Rahul. The ₹78 lakh pricing is fully inclusive of clubhouse lifetime membership and designated covered parking. Additionally, with our 10:90 bank subvention scheme...",
-            technique_used="Value Reframing & 10:90 Subvention Plan",
-            resolution_status="Resolved"
-        )
-        db.add(obj)
-
-        # Agent activity logs
-        logs = [
-            AgentActivityLog(
-                agent_name="Lead Research Agent",
-                action_type="research",
-                lead_id=lead1.id,
-                lead_name="Rahul Sharma",
-                description="Profiled prospect as Senior IT Architect. Mapped commute pain points to Hinjawadi IT cluster proximity.",
-                status="success"
-            ),
-            AgentActivityLog(
-                agent_name="Lead Scoring Agent",
-                action_type="score",
-                lead_id=lead1.id,
-                lead_name="Rahul Sharma",
-                description="Assigned score 87/100 (Hot, 82% conversion probability). Factors: High budget match (+25), Urgent timeline (+20).",
-                status="success"
-            ),
-            AgentActivityLog(
-                agent_name="Qualification Agent",
-                action_type="qualify",
-                lead_id=lead1.id,
-                lead_name="Rahul Sharma",
-                description="BANT Criteria Confirmed: Budget ₹80L, Primary Decision Maker, 2 BHK Need, 30-day timeline.",
-                status="success"
-            ),
-            AgentActivityLog(
-                agent_name="Objection Handling Agent",
-                action_type="objection_handled",
-                lead_id=lead1.id,
-                lead_name="Rahul Sharma",
-                description="Handled price objection with 10:90 subvention financing and all-inclusive pricing breakdown.",
-                status="success"
-            ),
-            AgentActivityLog(
-                agent_name="CRM Agent",
-                action_type="crm_sync",
-                lead_id=lead1.id,
-                lead_name="Rahul Sharma",
-                description="Moved pipeline stage to 'Engaged'. Set Next Best Action to 'Schedule VIP Site Visit for Saturday'.",
-                status="success"
-            )
-        ]
-        db.add_all(logs)
-        db.commit()
+    db.add_all([
+        FollowUp(lead_id=leads["Arjun Mehta"].id, cadence_step=2, due_date=now + timedelta(days=1), status="pending",
+                 channel="whatsapp", title="Day 2: Sample offer and slab quote",
+                 message_content="Hi Arjun, sharing the 500+ slab quote for the Heavyweight Oversized Tee. Happy to send a sample piece so you can check the fabric."),
+        FollowUp(lead_id=leads["Harsh Agarwal"].id, cadence_step=2, due_date=now + timedelta(days=2), status="pending",
+                 channel="email", title="Day 2: Sweatshirt sample for comparison",
+                 message_content="Dear Harsh, we can send a Crewneck Sweatshirt sample so you can compare it side by side with other quotes."),
+        FollowUp(lead_id=leads["Ananya Iyer"].id, cadence_step=2, due_date=now + timedelta(days=1), status="pending",
+                 channel="whatsapp", title="Day 2: Trial order colours",
+                 message_content="Hi Ananya, here are the oversized tee colours for your trial order of 20 to 49 pieces."),
+        FollowUp(lead_id=leads["Imran Qureshi"].id, cadence_step=0, due_date=now, status="pending",
+                 channel="email", title="Day 0: Introduction with catalogue",
+                 message_content="Dear Imran, thank you for your interest in Celestial Wear. Attached are our product catalogue and bulk price list."),
+        FollowUp(lead_id=leads["Vikram Singh"].id, cadence_step=5, due_date=now + timedelta(days=3), status="pending",
+                 channel="whatsapp", title="Day 5: Bulk price list follow-up",
+                 message_content="Hi Vikram, following up from the trade fair. Would a quote for 1,000 Classic Crew Tees at the 500+ slab help?"),
+    ])
+    db.commit()

@@ -1,169 +1,197 @@
-import math
-import re
-from typing import List, Dict, Any, Tuple
+"""Knowledge-base retrieval: sentence-transformers embeddings + a pluggable vector store.
+
+VECTOR_STORE=sqlite (default): vectors live as JSON in knowledge_chunks.embedding_json, cosine in numpy.
+VECTOR_STORE=qdrant: same vectors mirrored into Qdrant (QDRANT_URL, or embedded on-disk mode when unset).
+SQLite stays the source of truth for chunk text either way.
+"""
+import atexit
 import json
+import logging
+import re
+from typing import List, Dict, Any, Tuple, Optional
+
+import numpy as np
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+
+log = logging.getLogger("nova.rag")
+
 
 class EmbeddingEngine:
-    """
-    Lightweight, self-contained semantic embedding generator.
-    Produces high-dimensional normalized vector representations
-    enabling instant semantic cosine similarity search without 
-    external model weights or GPU requirements.
-    """
-    DIMENSIONS = 128
+    """all-MiniLM-L6-v2 (384-dim). Loaded once; vectors are L2-normalised so cosine == dot product."""
+    DIMENSIONS = 384
+    _model = None
+
+    @classmethod
+    def load(cls):
+        if cls._model is None:
+            from sentence_transformers import SentenceTransformer  # heavy import (torch): only when first needed
+            log.info("Loading embedding model %s", settings.EMBEDDING_MODEL)
+            cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu")
+        return cls._model
+
+    @classmethod
+    def embed(cls, texts: List[str]) -> List[List[float]]:
+        vecs = cls.load().encode(texts, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False)
+        return vecs.astype(float).round(6).tolist()
 
     @classmethod
     def generate_embedding(cls, text: str) -> List[float]:
-        # Clean text
-        words = re.findall(r'\b[a-zA-Z0-9_\-\u0900-\u097F]+\b', text.lower())
-        if not words:
-            return [0.0] * cls.DIMENSIONS
-        
-        vec = [0.0] * cls.DIMENSIONS
-        for i, word in enumerate(words):
-            # Compute hash bucket with positional and character n-gram weighting
-            h = hash(word)
-            bucket = abs(h) % cls.DIMENSIONS
-            vec[bucket] += 1.0 + (0.1 * (len(word) % 5))
-            
-            # Bigram enhancement for semantic cohesion
-            if i > 0:
-                bigram = f"{words[i-1]}_{word}"
-                b_bucket = abs(hash(bigram)) % cls.DIMENSIONS
-                vec[b_bucket] += 1.5
+        return cls.embed([text])[0]
 
-        # L2 Normalize
-        norm = math.sqrt(sum(x * x for x in vec))
-        if norm > 0:
-            vec = [round(x / norm, 5) for x in vec]
-        return vec
 
-    @staticmethod
-    def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-        if not v1 or not v2 or len(v1) != len(v2):
-            return 0.0
-        dot = sum(a * b for a, b in zip(v1, v2))
-        return max(0.0, min(1.0, dot))
+def chunk_embedding_text(title: str, content: str) -> str:
+    """What gets embedded: the title gives short chunks their topic context."""
+    return f"{title}: {content}" if title else content
+
 
 class DocumentChunker:
-    """
-    Splits long documents into contextual chunks with sliding window overlap.
-    """
+    """~300-word chunks with 50-word overlap."""
+
     @staticmethod
-    def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> List[str]:
+    def chunk_text(text: str, chunk_size: int = 300, overlap: int = 50) -> List[str]:
         words = text.split()
-        if not words:
-            return []
         if len(words) <= chunk_size:
-            return [" ".join(words)]
-        
-        chunks = []
-        start = 0
+            return [" ".join(words)] if words else []
+        chunks, start = [], 0
         while start < len(words):
             end = min(start + chunk_size, len(words))
-            chunk = " ".join(words[start:end])
-            chunks.append(chunk)
-            if end >= len(words):
+            chunks.append(" ".join(words[start:end]))
+            if end == len(words):
                 break
-            start += (chunk_size - overlap)
+            start = end - overlap
         return chunks
 
+
+# ---------------------------------------------------------------- vector stores
+class SqliteVectorStore:
+    def upsert(self, items: List[Tuple[int, List[float], Dict[str, Any]]]):
+        pass  # vectors are already saved in knowledge_chunks.embedding_json by the caller
+
+    def delete(self, chunk_ids: List[int]):
+        pass  # rows are deleted by the ORM cascade
+
+    def search(self, db: Session, query_vec: List[float], top_k: int) -> List[Tuple[int, float]]:
+        from app.models.entities import KnowledgeChunk, KnowledgeDocument
+        rows = (db.query(KnowledgeChunk.id, KnowledgeChunk.embedding_json).join(KnowledgeDocument)
+                .filter(KnowledgeDocument.is_processed == True, KnowledgeChunk.embedding_json.isnot(None)).all())  # noqa: E712
+        ids, vecs = [], []
+        for cid, emb in rows:
+            v = json.loads(emb)
+            if len(v) == EmbeddingEngine.DIMENSIONS:  # skips stale 128-dim hash vectors until reindex runs
+                ids.append(cid)
+                vecs.append(v)
+        if not ids:
+            return []
+        scores = np.asarray(vecs) @ np.asarray(query_vec)
+        order = np.argsort(-scores)[:top_k]
+        return [(ids[i], float(scores[i])) for i in order]
+
+
+class QdrantVectorStore:
+    COLLECTION = "knowledge_chunks"
+
+    def __init__(self):
+        try:
+            from qdrant_client import QdrantClient
+            from qdrant_client.models import Distance, VectorParams
+        except ImportError as e:
+            raise RuntimeError("VECTOR_STORE=qdrant needs `pip install qdrant-client`") from e
+        self.client = (QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY) if settings.QDRANT_URL
+                       else QdrantClient(path=settings.QDRANT_PATH))
+        atexit.register(self.client.close)  # avoids a noisy __del__ traceback at interpreter shutdown
+        if not self.client.collection_exists(self.COLLECTION):
+            self.client.create_collection(self.COLLECTION, vectors_config=VectorParams(
+                size=EmbeddingEngine.DIMENSIONS, distance=Distance.COSINE))
+
+    def upsert(self, items: List[Tuple[int, List[float], Dict[str, Any]]]):
+        from qdrant_client.models import PointStruct
+        if items:
+            self.client.upsert(self.COLLECTION, [PointStruct(id=cid, vector=v, payload=p) for cid, v, p in items])
+
+    def delete(self, chunk_ids: List[int]):
+        if chunk_ids:
+            self.client.delete(self.COLLECTION, points_selector=chunk_ids)
+
+    def search(self, db: Session, query_vec: List[float], top_k: int) -> List[Tuple[int, float]]:
+        hits = self.client.query_points(self.COLLECTION, query=query_vec, limit=top_k).points
+        return [(int(h.id), float(h.score)) for h in hits]
+
+
+_store = None
+
+
+def vector_store():
+    global _store
+    if _store is None:
+        _store = QdrantVectorStore() if settings.VECTOR_STORE.lower() == "qdrant" else SqliteVectorStore()
+        log.info("Vector store: %s", type(_store).__name__)
+    return _store
+
+
+def index_chunks(db: Session, chunks: list):
+    """Embed KnowledgeChunk rows (must have ids, i.e. flushed), save vector + metadata, mirror to the store."""
+    if not chunks:
+        return
+    titles = [c.document.title if c.document else "" for c in chunks]
+    vecs = EmbeddingEngine.embed([chunk_embedding_text(t, c.content) for t, c in zip(titles, chunks)])
+    items = []
+    for c, t, v in zip(chunks, titles, vecs):
+        meta = {"document_title": t, "chunk_number": c.chunk_index, "word_count": len(c.content.split()),
+                "embedding_model": settings.EMBEDDING_MODEL}
+        c.embedding_json = json.dumps(v)
+        c.metadata_json = json.dumps(meta)
+        items.append((c.id, v, {**meta, "document_id": c.document_id}))
+    vector_store().upsert(items)
+
+
+def reindex_stale(db: Session) -> int:
+    """Re-embed chunks with no vector or a vector of the wrong size (e.g. the old 128-dim hash embeddings)."""
+    from app.models.entities import KnowledgeChunk
+    stale = [c for c in db.query(KnowledgeChunk).all()
+             if not c.embedding_json or len(json.loads(c.embedding_json)) != EmbeddingEngine.DIMENSIONS]
+    if stale:
+        index_chunks(db, stale)
+        db.commit()
+        log.warning("Re-embedded %d stale knowledge chunks", len(stale))
+    return len(stale)
+
+
+# ---------------------------------------------------------------- retrieval
 class RAGEngine:
-    """
-    Knowledge Base RAG Orchestrator:
-    - Stores chunks and embeddings
-    - Executes semantic search + keyword boosting
-    - Synthesizes grounded answers with strict anti-hallucination guardrails
-    """
-    SIMILARITY_THRESHOLD = 0.28
+    @staticmethod
+    def search_chunks(db: Session, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Top-k chunks by cosine similarity, highest first, each with title / chunk number / score."""
+        from app.models.entities import KnowledgeChunk
+        hits = vector_store().search(db, EmbeddingEngine.generate_embedding(query), top_k or settings.RAG_TOP_K)
+        if not hits:
+            return []
+        rows = {c.id: c for c in db.query(KnowledgeChunk).filter(KnowledgeChunk.id.in_([h[0] for h in hits])).all()}
+        return [{
+            "chunk_id": cid,
+            "document_id": rows[cid].document_id,
+            "document_title": rows[cid].document.title if rows[cid].document else "Document",
+            "chunk_number": rows[cid].chunk_index,
+            "content": rows[cid].content,
+            "score": round(score, 3),
+        } for cid, score in hits if cid in rows]
 
-    @classmethod
-    def search_chunks(cls, query: str, chunks_data: List[Dict[str, Any]], top_k: int = 3) -> List[Dict[str, Any]]:
-        query_vec = EmbeddingEngine.generate_embedding(query)
-        query_terms = set(re.findall(r'\b[a-zA-Z0-9]+\b', query.lower()))
 
-        scored_chunks: List[Tuple[float, Dict[str, Any]]] = []
+# ---------------------------------------------------------------- grounding check
+_NUM = re.compile(r"\d+(?:[.,]\d+)*")
 
-        for item in chunks_data:
-            content = item["content"]
-            chunk_vec = item.get("embedding")
-            if not chunk_vec and item.get("embedding_json"):
-                try:
-                    chunk_vec = json.loads(item["embedding_json"])
-                except Exception:
-                    chunk_vec = None
 
-            if not chunk_vec:
-                chunk_vec = EmbeddingEngine.generate_embedding(content)
+def _norm_numbers(text: str) -> set:
+    out = set()
+    for raw in _NUM.findall(text):
+        n = raw.replace(",", "")
+        if "." in n:
+            n = n.rstrip("0").rstrip(".")
+        out.add(n)
+    return out
 
-            cosine = EmbeddingEngine.cosine_similarity(query_vec, chunk_vec)
-            
-            # Keyword overlap boost for precision
-            content_lower = content.lower()
-            keyword_matches = sum(1 for term in query_terms if term in content_lower)
-            keyword_boost = 0.08 * keyword_matches if query_terms else 0.0
-            
-            total_score = min(1.0, cosine + keyword_boost)
 
-            scored_chunks.append((total_score, item))
-
-        scored_chunks.sort(key=lambda x: x[0], reverse=True)
-        
-        results = []
-        for score, item in scored_chunks[:top_k]:
-            results.append({
-                "chunk_id": item.get("id"),
-                "document_id": item.get("document_id"),
-                "document_title": item.get("document_title", "Company Knowledge Doc"),
-                "content": item["content"],
-                "score": round(score, 3)
-            })
-        return results
-
-    @classmethod
-    def generate_grounded_answer(cls, query: str, retrieved_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Synthesizes a fact-checked response using retrieved context only.
-        If context score is below threshold, triggers anti-hallucination response.
-        """
-        if not retrieved_chunks or retrieved_chunks[0]["score"] < cls.SIMILARITY_THRESHOLD:
-            return {
-                "grounded_answer": "I do not have sufficient verified information in the official project documentation to answer that accurately. I have flagged this for our senior property specialist to confirm the exact details for you.",
-                "confidence": 0.20,
-                "is_unavailable": True,
-                "sources": []
-            }
-
-        top_chunk = retrieved_chunks[0]
-        sources = [
-            {
-                "title": c.get("document_title", "Property Catalog"),
-                "chunk_id": c.get("chunk_id"),
-                "score": c.get("score"),
-                "excerpt": c["content"][:160] + "..."
-            }
-            for c in retrieved_chunks if c["score"] >= cls.SIMILARITY_THRESHOLD
-        ]
-
-        # Extract targeted answering context
-        context_text = " ".join([c["content"] for c in retrieved_chunks[:2]])
-        
-        # Grounded answer synthesis
-        q_lower = query.lower()
-        if "price" in q_lower or "cost" in q_lower or "lakh" in q_lower or "crore" in q_lower:
-            answer = f"According to our verified project pricing documentation: {top_chunk['content']}. All prices include clubhouse membership and designated covered parking; stamp duty and registration are calculated as per government rates."
-        elif "amenit" in q_lower or "clubhouse" in q_lower or "pool" in q_lower or "gym" in q_lower:
-            answer = f"Our official brochure specifies the following amenities: {top_chunk['content']}. All residents get unrestricted access to the 25,000 sq.ft clubhouse, infinity pool, and sports arena."
-        elif "rera" in q_lower or "possession" in q_lower or "date" in q_lower or "approval" in q_lower:
-            answer = f"As per official RERA records: {top_chunk['content']}. The project is 100% compliant with MahaRERA approvals and bank-approved by SBI, HDFC, and ICICI."
-        elif "floor plan" in q_lower or "carpet area" in q_lower or "bhk" in q_lower or "sq ft" in q_lower:
-            answer = f"Regarding property specifications: {top_chunk['content']}. The carpet area is certified under RERA with zero space wastage."
-        else:
-            answer = f"Based on verified project documents: {top_chunk['content']}"
-
-        return {
-            "grounded_answer": answer,
-            "confidence": top_chunk["score"],
-            "is_unavailable": False,
-            "sources": sources
-        }
+def ungrounded_numbers(answer: str, sources_text: str) -> set:
+    """Numbers (prices, quantities, days, %) in the answer that appear nowhere in the allowed text."""
+    return _norm_numbers(answer) - _norm_numbers(sources_text)

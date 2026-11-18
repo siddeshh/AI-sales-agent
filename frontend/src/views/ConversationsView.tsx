@@ -93,11 +93,12 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
   };
 
   const PRESET_PROMPTS = [
-    'I am looking for a 2 BHK apartment in Pune under 80 lakh.',
-    '₹80 lakh is slightly on the higher side of my budget. Are there discounts?',
-    'What amenities are included in Skyline Greens?',
-    'What is the MahaRERA registration number and possession date?',
-    'Can I book a VIP site visit this Saturday at 11 AM?',
+    'Hi, do you take bulk orders for printed tees?',
+    'What is the price for 200 oversized tees?',
+    'That is too expensive, another supplier quoted less.',
+    'I only need about 30 pieces to start. Is that possible?',
+    'How long will delivery take for 150 embroidered hoodies?',
+    'Can we do a sample review call on Friday?',
     'Can I please speak to a human sales representative?',
   ];
 
@@ -107,22 +108,22 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
       gridTemplateColumns: '260px 1fr 280px',
       gap: 0,
       height: 'calc(100vh - 104px)',
-      background: '#ffffff',
-      border: '1px solid #e2e8f0',
+      background: 'var(--card)',
+      border: '1px solid var(--border)',
       borderRadius: '8px',
       overflow: 'hidden',
     }}>
       {/* Column 1: Conversations List */}
       <div style={{
-        borderRight: '1px solid #e2e8f0',
+        borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
-        background: '#ffffff',
+        background: 'var(--card)',
       }}>
         {/* Channel Filter */}
         <div style={{
           padding: '12px 14px',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           gap: '4px',
         }}>
@@ -133,7 +134,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
               className={`btn btn-sm ${channel === ch ? 'btn-secondary' : 'btn-ghost'}`}
               style={{
                 flex: 1,
-                fontSize: '11px',
+                fontSize: '12px',
                 height: '26px',
                 fontWeight: channel === ch ? 600 : 500,
                 textTransform: 'capitalize',
@@ -154,22 +155,22 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                 onClick={() => setSelectedLeadId(l.id)}
                 style={{
                   padding: '12px 14px',
-                  borderBottom: '1px solid #f1f5f9',
-                  background: isSelected ? '#f8fafc' : '#ffffff',
+                  borderBottom: '1px solid var(--muted)',
+                  background: isSelected ? 'var(--muted)' : 'var(--card)',
                   cursor: 'pointer',
-                  borderLeft: isSelected ? '3px solid #2563eb' : '3px solid transparent',
+                  borderLeft: isSelected ? '3px solid var(--brand)' : '3px solid transparent',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                     {l.name}
                   </span>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                    2m ago
+                  <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
+                    {l.last_contacted ? new Date(l.last_contacted).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
                   </span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {l.requirements || 'Inquiring on property options'}
+                <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {l.requirements || 'No requirements shared yet'}
                 </div>
               </div>
             );
@@ -181,26 +182,32 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        background: '#f8fafc',
-        borderRight: '1px solid #e2e8f0',
+        background: 'var(--muted)',
+        borderRight: '1px solid var(--border)',
       }}>
         {/* Header */}
         <div style={{
           height: '48px',
           padding: '0 18px',
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
+          background: 'var(--card)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <div>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
               {selectedLead?.name}
             </span>
-            <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginLeft: '8px' }}>
               via {channel.toUpperCase()}
             </span>
+            {channel !== 'chat' && (
+              <span className="badge badge-amber" style={{ marginLeft: '8px' }}
+                title={`No ${channel} integration: messages here are stored in this app only and are not sent by ${channel}.`}>
+                Demo mode — simulated
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -209,7 +216,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
             ) : (
               <span className="badge badge-green">AI Assistant Active</span>
             )}
-            <button onClick={handleToggleTakeover} className="btn btn-secondary btn-sm" style={{ height: '26px', fontSize: '11px' }}>
+            <button onClick={handleToggleTakeover} className="btn btn-secondary btn-sm" style={{ height: '26px', fontSize: '12px' }}>
               <UserCheck size={12} />
               <span>{humanTakeover ? 'Release' : 'Take Over'}</span>
             </button>
@@ -220,17 +227,17 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
         {conversation?.human_requested && !humanTakeover && (
           <div style={{
             padding: '8px 16px',
-            background: '#fffbeb',
-            borderBottom: '1px solid #fef3c7',
+            background: 'var(--warning-soft)',
+            borderBottom: '1px solid var(--warning-border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#92400e' }}>
-              <AlertTriangle size={14} color="#d97706" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--warning)' }}>
+              <AlertTriangle size={14} color="var(--warning)" />
               <span>Customer requested human sales representative.</span>
             </div>
-            <button onClick={handleToggleTakeover} className="btn btn-secondary btn-sm" style={{ height: '24px', fontSize: '11px' }}>
+            <button onClick={handleToggleTakeover} className="btn btn-secondary btn-sm" style={{ height: '24px', fontSize: '12px' }}>
               Take Over Thread
             </button>
           </div>
@@ -246,7 +253,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
           gap: '12px',
         }}>
           {(!conversation?.messages || conversation.messages.length === 0) ? (
-            <div style={{ margin: 'auto', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: '14px' }}>
               No messages yet. Send an inquiry or select a preset prompt below.
             </div>
           ) : (
@@ -265,17 +272,17 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                     alignSelf: isUser ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>
-                    {isUser ? selectedLead?.name : isHumanRep ? 'Alex Turner (Rep)' : m.agent_name || 'Sales Assistant'}
+                  <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', marginBottom: '2px' }}>
+                    {isUser ? selectedLead?.name : isHumanRep ? 'Human rep' : m.agent_name || 'Sales Assistant'}
                   </div>
 
                   <div style={{
                     padding: '9px 13px',
                     borderRadius: '6px',
-                    background: isUser ? '#0f172a' : '#ffffff',
-                    color: isUser ? '#ffffff' : '#0f172a',
-                    border: isUser ? 'none' : '1px solid #e2e8f0',
-                    fontSize: '13px',
+                    background: isUser ? 'var(--foreground)' : 'var(--card)',
+                    color: isUser ? 'var(--card)' : 'var(--foreground)',
+                    border: isUser ? 'none' : '1px solid var(--border)',
+                    fontSize: '14px',
                     lineHeight: 1.5,
                     boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                     whiteSpace: 'pre-wrap',
@@ -288,7 +295,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
           )}
 
           {isTyping && (
-            <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span className="status-dot status-dot-blue" />
               <span>Sales Assistant is typing...</span>
             </div>
@@ -300,8 +307,8 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
         {/* Prompt Suggestions */}
         <div style={{
           padding: '6px 14px',
-          background: '#ffffff',
-          borderTop: '1px solid #f1f5f9',
+          background: 'var(--card)',
+          borderTop: '1px solid var(--muted)',
           overflowX: 'auto',
           display: 'flex',
           gap: '6px',
@@ -313,7 +320,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
               onClick={() => handleSendMessage(promptText)}
               disabled={isSending}
               className="btn btn-secondary btn-sm"
-              style={{ fontSize: '11px', height: '24px', padding: '0 8px' }}
+              style={{ fontSize: '12px', height: '24px', padding: '0 8px' }}
             >
               <span>{promptText.slice(0, 32)}...</span>
             </button>
@@ -323,8 +330,8 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
         {/* Message Input Box */}
         <div style={{
           padding: '12px 16px',
-          background: '#ffffff',
-          borderTop: '1px solid #e2e8f0',
+          background: 'var(--card)',
+          borderTop: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
@@ -338,7 +345,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
               if (e.key === 'Enter') handleSendMessage();
             }}
             className="form-input"
-            style={{ height: '34px', fontSize: '13px' }}
+            style={{ height: '34px', fontSize: '14px' }}
           />
 
           <button
@@ -356,7 +363,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
       {/* Column 3: Lead Context & Sales Assistant */}
       <div style={{
         padding: '16px',
-        background: '#ffffff',
+        background: 'var(--card)',
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
@@ -364,33 +371,33 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
       }}>
         {/* Prospect Details */}
         <div>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '6px' }}>
             Prospect Context
           </div>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
             {selectedLead?.name}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-            Budget: {selectedLead?.budget || '₹80 lakh'} • {selectedLead?.location}
+          <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginTop: '2px' }}>
+            Budget: {selectedLead?.budget || 'not shared'} • {selectedLead?.location || 'location unknown'}
           </div>
           <div style={{ marginTop: '6px' }}>
-            <ScoreBadge score={selectedLead?.lead_score || 87} category={selectedLead?.score_category || 'Hot'} />
+            <ScoreBadge score={selectedLead?.lead_score ?? 0} category={selectedLead?.score_category || 'Cold'} />
           </div>
         </div>
 
         {/* NLP Indicators */}
         <div>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-            Live Intent &amp; Sentiment
+          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '6px' }}>
+            Last message: intent &amp; sentiment
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b' }}>Intent</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{conversation?.current_intent || 'Discovery'}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+              <span style={{ color: 'var(--muted-foreground)' }}>Intent</span>
+              <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{conversation?.current_intent || '—'}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b' }}>Sentiment</span>
-              <span style={{ fontWeight: 600, color: conversation?.sentiment === 'Hesitant' ? '#d97706' : '#16a34a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+              <span style={{ color: 'var(--muted-foreground)' }}>Sentiment</span>
+              <span style={{ fontWeight: 600, color: conversation?.sentiment === 'Hesitant' ? 'var(--warning)' : 'var(--success)' }}>
                 {conversation?.sentiment || 'Positive'}
               </span>
             </div>
@@ -399,14 +406,14 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
 
         {/* Assistant Recommendation */}
         <div>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '6px' }}>
             Assistant Recommendation
           </div>
-          <div style={{ padding: '10px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#166534', marginBottom: '2px' }}>
+          <div style={{ padding: '10px 12px', background: 'var(--success-soft)', border: '1px solid var(--success-border)', borderRadius: '6px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--success)', marginBottom: '2px' }}>
               {selectedLead?.next_best_action || 'Schedule Demo'}
             </div>
-            <div style={{ fontSize: '11px', color: '#15803d', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '12px', color: 'var(--success)', lineHeight: 1.4 }}>
               {selectedLead?.next_best_action_reason || 'Prospect meets BANT criteria.'}
             </div>
           </div>
@@ -415,14 +422,14 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
         {/* RAG Sources Citations */}
         {ragSources.length > 0 && (
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Knowledge Base Citations
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {ragSources.map((s, idx) => (
-                <div key={idx} style={{ padding: '6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '11px' }}>
-                  <div style={{ fontWeight: 600, color: '#0f172a' }}>{s.title}</div>
-                  <div style={{ color: '#64748b', marginTop: '2px' }}>{s.excerpt}</div>
+                <div key={idx} style={{ padding: '6px 8px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '12px' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{s.title}</div>
+                  <div style={{ color: 'var(--muted-foreground)', marginTop: '2px' }}>{s.excerpt}</div>
                 </div>
               ))}
             </div>

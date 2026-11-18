@@ -20,18 +20,44 @@ class Settings(BaseSettings):
     
     # AI Engine & LLM Settings
     DEMO_MODE: bool = True
-    LLM_PROVIDER: str = "mock"  # "mock", "openai", "groq", "anthropic", "ollama"
+    LLM_PROVIDER: str = "groq"  # "groq", "openai", "ollama"; "mock" forces rule-based fallback
+    LLM_MODEL: Optional[str] = None  # None or "" → provider default (see app/services/llm.py)
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    # Injected into every reply prompt. Default matches the seeded demo knowledge base.
+    COMPANY_PROFILE: str = (
+        "Celestial Wear, a D2C apparel brand from Bengaluru. Sells tees, polos, hoodies, sweatshirts, kurtas, "
+        "joggers, caps and totes online, and takes bulk/wholesale orders (boutiques, resellers, corporate gifting, "
+        "college fests) with custom printing and embroidery. Meetings are product demo / sample review calls "
+        "(video call) or showroom visits at the Indiranagar studio."
+    )
     
-    # Qdrant Vector DB (optional; falls back to embedded semantic vector engine)
+    # Knowledge base / RAG
+    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    VECTOR_STORE: str = "sqlite"  # "sqlite" (vectors as JSON in the DB) or "qdrant"
+    RAG_TOP_K: int = 4
+    RAG_SIMILARITY_THRESHOLD: float = 0.35
+
+    # Qdrant (only when VECTOR_STORE="qdrant"): server at QDRANT_URL, else embedded on-disk at QDRANT_PATH
     QDRANT_URL: Optional[str] = None
     QDRANT_API_KEY: Optional[str] = None
+    QDRANT_PATH: str = "./qdrant_data"
     
+    # Real email (SMTP). Test mode sends everything to EMAIL_TEST_RECIPIENT with "[to: lead@x] " in the subject.
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
+    EMAIL_TEST_MODE: bool = True
+    EMAIL_TEST_RECIPIENT: Optional[str] = None
+
+    # Offline lead-scoring experiment output (ml/lead_scoring/experiment.py --out ...), shown on the Analytics page
+    ML_RESULTS_DIR: str = "../ml/lead_scoring/output"
+
     # Default Demo Industry
-    DEFAULT_INDUSTRY: str = "real_estate"  # "real_estate", "saas", "edtech", "automotive", "b2b_services"
+    DEFAULT_INDUSTRY: str = "retail"
 
     class Config:
         env_file = ".env"

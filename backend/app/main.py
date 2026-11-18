@@ -3,8 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.core.database import Base, engine, SessionLocal
+from app.core.database import Base, engine, SessionLocal, add_missing_columns
 from app.services.seed_data import seed_database
+from app.rag.engine import EmbeddingEngine, vector_store, reindex_stale
 
 # Import API Routers
 from app.api.auth import router as auth_router
@@ -18,12 +19,19 @@ from app.api.crm import router as crm_router
 from app.api.analytics import router as analytics_router
 from app.api.agents import router as agents_router
 from app.api.demo import router as demo_router
+from app.api.ml import router as ml_router
+from app.api.integrations import router as integrations_router
+from app.api.dashboard import router as dashboard_router
 
 # Ensure tables exist immediately
 Base.metadata.create_all(bind=engine)
+add_missing_columns()
+EmbeddingEngine.load()  # once per process; first run downloads the model (~90 MB)
+vector_store()
 db_init = SessionLocal()
 try:
     seed_database(db_init)
+    reindex_stale(db_init)
 finally:
     db_init.close()
 
@@ -41,7 +49,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Autonomous Multi-Agent Sales Workforce platform coordinating 11 specialized AI sales agents.",
+    description="Nova AI Sales Agent: multi-agent sales assistant for retail and e-commerce SMEs (demo company: Celestial Wear).",
     lifespan=lifespan
 )
 
@@ -66,6 +74,9 @@ app.include_router(crm_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(agents_router, prefix=settings.API_V1_STR)
 app.include_router(demo_router, prefix=settings.API_V1_STR)
+app.include_router(ml_router, prefix=settings.API_V1_STR)
+app.include_router(integrations_router, prefix=settings.API_V1_STR)
+app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
@@ -74,8 +85,7 @@ def root():
         "version": settings.VERSION,
         "status": "online",
         "docs_url": "/docs",
-        "workforce_agents": 11,
-        "demo_industry": settings.DEFAULT_INDUSTRY
+        "demo_company": "Celestial Wear",
     }
 
 @app.get("/health")

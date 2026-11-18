@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import json
 
 from app.core.database import get_db
 from app.models.entities import KnowledgeDocument, KnowledgeChunk
 from app.schemas.schemas import KnowledgeDocumentOut, KnowledgeChunkOut, RAGQueryRequest, RAGQueryResponse
-from app.rag.engine import DocumentChunker, EmbeddingEngine, RAGEngine
+from app.core.config import settings
+from app.rag.engine import DocumentChunker, index_chunks, vector_store
 from app.agents.rag_agent import KnowledgeRAGAgent
+from app.services.activity import agent_run
 
 router = APIRouter(prefix="/knowledge", tags=["RAG Knowledge Base"])
 
@@ -27,24 +28,16 @@ def get_document_chunks(document_id: int, db: Session = Depends(get_db)):
 async def upload_document(
     title: str = Form(...),
     category: str = Form("Brochure"),
-    industry: str = Form("real_estate"),
+    industry: str = Form("retail"),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
     contents = await file.read()
-    text_content = ""
-    try:
-        text_content = contents.decode("utf-8", errors="ignore")
-    except Exception:
-        text_content = f"Document content for {title}. Extracted text placeholder."
-
-    if not text_content.strip():
-        text_content = f"Official specification doc for {title}. Verified sales and product parameters."
-
-    # Split into chunks
-    raw_chunks = DocumentChunker.chunk_text(text_content, chunk_size=350, overlap=40)
+    # shortcut: plain-text decode only; PDF/DOCX need a text extractor (e.g. pypdf) before they index usefully
+    text_content = contents.decode("utf-8", errors="ignore")
+    raw_chunks = DocumentChunker.chunk_text(text_content)
     if not raw_chunks:
-        raw_chunks = [text_content]
+        raise HTTPException(status_code=400, detail="No readable text in this file. Upload a .txt or .md file.")
 
     doc = KnowledgeDocument(
         title=title,
@@ -57,22 +50,16 @@ async def upload_document(
         is_processed=True
     )
     db.add(doc)
+    db.flush()
+
+    chunks = [KnowledgeChunk(document_id=doc.id, chunk_index=i, content=t) for i, t in enumerate(raw_chunks)]
+    db.add_all(chunks)
+    db.flush()
+    with agent_run(db, "Knowledge Agent", "index_document") as run:
+        index_chunks(db, chunks)
+        run["description"] = f"Added '{title}' to the knowledge base ({len(chunks)} chunks)."
     db.commit()
     db.refresh(doc)
-
-    # Ingest chunks & generate embeddings
-    for idx, chunk_text in enumerate(raw_chunks):
-        embedding_vec = EmbeddingEngine.generate_embedding(chunk_text)
-        chunk = KnowledgeChunk(
-            document_id=doc.id,
-            chunk_index=idx,
-            content=chunk_text,
-            metadata_json=json.dumps({"length": len(chunk_text)}),
-            embedding_json=json.dumps(embedding_vec)
-        )
-        db.add(chunk)
-
-    db.commit()
     return doc
 
 @router.delete("/{document_id}")
@@ -80,17 +67,21 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
     doc = db.query(KnowledgeDocument).filter(KnowledgeDocument.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    vector_store().delete([c.id for c in doc.chunks])
     db.delete(doc)
     db.commit()
     return {"message": f"Document {document_id} and associated vector chunks removed"}
 
 @router.post("/query", response_model=RAGQueryResponse)
 def test_rag_query(payload: RAGQueryRequest, db: Session = Depends(get_db)):
-    res = KnowledgeRAGAgent.answer_question(payload.query, db, industry=payload.industry)
+    res = KnowledgeRAGAgent.answer_question(payload.query, db)
     return RAGQueryResponse(
         query=payload.query,
         grounded_answer=res["answer"],
         confidence=res["confidence"],
         sources=res["sources"],
-        is_unavailable=res["is_unavailable"]
+        is_unavailable=res["is_unavailable"],
+        provider=res["provider"],
+        grounding_failed=res["grounding_failed"],
+        threshold=settings.RAG_SIMILARITY_THRESHOLD,
     )

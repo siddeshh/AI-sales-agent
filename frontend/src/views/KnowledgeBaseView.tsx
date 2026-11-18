@@ -15,14 +15,16 @@ export const KnowledgeBaseView: React.FC = () => {
   // Upload Form
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('Brochure');
+  const [uploadCategory, setUploadCategory] = useState('Catalogue');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   // RAG Query Tester
-  const [ragQuery, setRagQuery] = useState('What are the 2 BHK prices and MahaRERA possession date?');
+  const [ragQuery, setRagQuery] = useState('What is the bulk price for 250 French Terry Hoodies?');
   const [ragResult, setRagResult] = useState<any>(null);
+  const [ragError, setRagError] = useState('');
   const [isQuerying, setIsQuerying] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const loadDocuments = async () => {
     try {
@@ -42,6 +44,7 @@ export const KnowledgeBaseView: React.FC = () => {
     if (!uploadFile || !uploadTitle) return;
 
     setIsUploading(true);
+    setUploadError('');
     const fd = new FormData();
     fd.append('title', uploadTitle);
     fd.append('category', uploadCategory);
@@ -54,7 +57,7 @@ export const KnowledgeBaseView: React.FC = () => {
       setUploadFile(null);
       await loadDocuments();
     } catch (err) {
-      console.error(err);
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setIsUploading(false);
     }
@@ -84,11 +87,13 @@ export const KnowledgeBaseView: React.FC = () => {
   const handleTestRAG = async () => {
     if (!ragQuery.trim()) return;
     setIsQuerying(true);
+    setRagError('');
     try {
       const res = await api.queryRAG(ragQuery);
       setRagResult(res);
     } catch (err) {
-      console.error(err);
+      setRagResult(null);
+      setRagError(err instanceof Error ? err.message : 'Request failed');
     } finally {
       setIsQuerying(false);
     }
@@ -113,7 +118,7 @@ export const KnowledgeBaseView: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
         {/* Left: Documents Table */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
             Indexed Documents ({documents.length})
           </div>
 
@@ -131,16 +136,16 @@ export const KnowledgeBaseView: React.FC = () => {
               {documents.map((doc) => (
                 <tr key={doc.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{doc.title}</div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{doc.title}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
                       {(doc.file_size_bytes / 1024 / 1024).toFixed(2)} MB • {doc.filename}
                     </div>
                   </td>
                   <td>
-                    <span style={{ fontSize: '12px', color: '#475569' }}>{doc.category}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>{doc.category}</span>
                   </td>
                   <td>
-                    <span style={{ fontSize: '12px', color: '#0f172a' }}>{doc.total_chunks}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--foreground)' }}>{doc.total_chunks}</span>
                   </td>
                   <td>
                     <span className="badge badge-green">Indexed</span>
@@ -153,7 +158,7 @@ export const KnowledgeBaseView: React.FC = () => {
                         style={{ padding: '4px' }}
                         title="View Chunks"
                       >
-                        <Eye size={13} color="#64748b" />
+                        <Eye size={13} color="var(--muted-foreground)" />
                       </button>
                       <button
                         onClick={() => handleDeleteDoc(doc.id)}
@@ -161,7 +166,7 @@ export const KnowledgeBaseView: React.FC = () => {
                         style={{ padding: '4px' }}
                         title="Delete"
                       >
-                        <Trash2 size={13} color="#dc2626" />
+                        <Trash2 size={13} color="var(--danger)" />
                       </button>
                     </div>
                   </td>
@@ -171,14 +176,14 @@ export const KnowledgeBaseView: React.FC = () => {
           </table>
         </div>
 
-        {/* Right: Query Tester */}
+        {/* Right: Test a question */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
-              Semantic Search Tester
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
+              Test a question
             </div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>
-              Test questions against the vector index to verify citations and anti-hallucination guardrails.
+            <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
+              Runs the same retrieval and answer step the Knowledge agent uses in chat. Answers come only from the matched chunks.
             </div>
           </div>
 
@@ -186,9 +191,9 @@ export const KnowledgeBaseView: React.FC = () => {
             rows={3}
             value={ragQuery}
             onChange={(e) => setRagQuery(e.target.value)}
-            placeholder="Ask a property or pricing question..."
+            placeholder="Ask a product or pricing question..."
             className="form-textarea"
-            style={{ fontSize: '13px' }}
+            style={{ fontSize: '14px' }}
           />
 
           <button
@@ -198,37 +203,53 @@ export const KnowledgeBaseView: React.FC = () => {
             style={{ alignSelf: 'flex-start' }}
           >
             <Search size={13} />
-            <span>{isQuerying ? 'Querying index...' : 'Test Question'}</span>
+            <span>{isQuerying ? 'Searching...' : 'Ask'}</span>
           </button>
+
+          {ragError && (
+            <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{ragError}</div>
+          )}
 
           {ragResult && (
             <div style={{
               padding: '14px',
               borderRadius: '6px',
-              background: ragResult.is_unavailable ? '#fffbeb' : '#f8fafc',
-              border: `1px solid ${ragResult.is_unavailable ? '#fef3c7' : '#e2e8f0'}`,
+              background: ragResult.is_unavailable || ragResult.grounding_failed ? 'var(--warning-soft)' : 'var(--muted)',
+              border: `1px solid ${ragResult.is_unavailable || ragResult.grounding_failed ? 'var(--warning-border)' : 'var(--border)'}`,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: ragResult.is_unavailable ? '#b45309' : '#166534' }}>
-                  {ragResult.is_unavailable ? 'Information Unavailable' : 'Grounded Answer'}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: ragResult.is_unavailable || ragResult.grounding_failed ? 'var(--warning)' : 'var(--success)' }}>
+                  {ragResult.is_unavailable
+                    ? `No chunk above similarity ${ragResult.threshold}`
+                    : ragResult.grounding_failed
+                      ? 'Answer failed grounding check'
+                      : 'Answer from sources'}
                 </span>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>
-                  Confidence: {Math.round(ragResult.confidence * 100)}%
+                <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
+                  {ragResult.provider === 'rules'
+                    ? 'Demo mode: no LLM configured, best chunk quoted'
+                    : `Model: ${ragResult.provider}`}
                 </span>
               </div>
 
-              <p style={{ fontSize: '13px', lineHeight: 1.5, color: '#0f172a', marginBottom: '10px' }}>
+              <p style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--foreground)', marginBottom: '10px' }}>
                 {ragResult.grounded_answer}
               </p>
 
               {ragResult.sources && ragResult.sources.length > 0 && (
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>
-                    Sources:
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', marginBottom: '4px' }}>
+                    Matched sources (cosine similarity)
                   </div>
-                  {ragResult.sources.map((src: any, i: number) => (
-                    <div key={i} style={{ fontSize: '11px', color: '#475569', padding: '3px 0' }}>
-                      • {src.title} (Score: {src.score})
+                  {ragResult.sources.map((src: any) => (
+                    <div key={src.chunk_id} style={{ fontSize: '12px', color: 'var(--muted-foreground)', padding: '6px 0', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <strong style={{ color: 'var(--foreground)' }}>
+                          {src.title} · chunk {src.chunk_number}
+                        </strong>
+                        <span>{src.score.toFixed(3)}</span>
+                      </div>
+                      <div style={{ color: 'var(--muted-foreground)', marginTop: '2px' }}>{src.excerpt}</div>
                     </div>
                   ))}
                 </div>
@@ -242,10 +263,10 @@ export const KnowledgeBaseView: React.FC = () => {
       {isUploadModalOpen && (
         <div className="modal-overlay">
           <div className="modal-box" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '16px', color: '#0f172a', marginBottom: '14px' }}>Upload Document</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--foreground)', marginBottom: '14px' }}>Upload Document</h3>
             <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Document Title *
                 </label>
                 <input
@@ -253,13 +274,13 @@ export const KnowledgeBaseView: React.FC = () => {
                   required
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
-                  placeholder="e.g. Skyline Greens Brochure 2026"
+                  placeholder="e.g. Bulk Order Price List 2026"
                   className="form-input"
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Category
                 </label>
                 <select
@@ -267,25 +288,29 @@ export const KnowledgeBaseView: React.FC = () => {
                   onChange={(e) => setUploadCategory(e.target.value)}
                   className="form-select"
                 >
-                  <option value="Brochure">Brochure</option>
+                  <option value="Catalogue">Catalogue</option>
                   <option value="Pricing">Pricing</option>
+                  <option value="Policy">Policy</option>
                   <option value="FAQ">FAQ</option>
-                  <option value="Policy">Legal &amp; Approvals</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
-                  File (PDF, TXT, MD) *
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  File (TXT, MD) *
                 </label>
                 <input
                   type="file"
                   required
-                  accept=".pdf,.txt,.md,.json"
+                  accept=".txt,.md"
                   onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                   className="form-input"
                 />
               </div>
+
+              {uploadError && (
+                <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{uploadError}</div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
                 <button
@@ -313,7 +338,7 @@ export const KnowledgeBaseView: React.FC = () => {
         <div className="modal-overlay">
           <div className="modal-box" style={{ maxWidth: '640px', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a' }}>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--foreground)' }}>
                 Chunks: {activeChunkDocTitle}
               </div>
               <button onClick={() => setIsChunkModalOpen(false)} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>
@@ -323,11 +348,11 @@ export const KnowledgeBaseView: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
               {selectedDocChunks.map((ch) => (
-                <div key={ch.id} style={{ padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '3px' }}>
+                <div key={ch.id} style={{ padding: '10px 12px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', marginBottom: '3px' }}>
                     Chunk #{ch.chunk_index}
                   </div>
-                  <div style={{ fontSize: '12px', lineHeight: 1.5, color: '#0f172a' }}>
+                  <div style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--foreground)' }}>
                     {ch.content}
                   </div>
                 </div>

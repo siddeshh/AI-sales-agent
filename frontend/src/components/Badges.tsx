@@ -59,15 +59,15 @@ export const BANTBadge: React.FC<BANTBadgeProps> = ({ budget, authority, need, t
       {items.map((i) => (
         <span
           key={i.label}
-          title={`${i.tip}: ${i.ok ? 'Verified' : 'Pending'}`}
+          title={`${i.tip}: ${i.ok ? 'Met' : 'Not yet'}`}
           style={{
             fontSize: '10px',
             fontWeight: 600,
             padding: '1px 5px',
             borderRadius: '3px',
-            background: i.ok ? '#f0fdf4' : '#f1f5f9',
-            color: i.ok ? '#166534' : '#94a3b8',
-            border: `1px solid ${i.ok ? '#bbf7d0' : '#e2e8f0'}`,
+            background: i.ok ? 'var(--success-soft)' : 'var(--muted)',
+            color: i.ok ? 'var(--success)' : 'var(--muted-foreground)',
+            border: `1px solid ${i.ok ? 'var(--success-border)' : 'var(--border)'}`,
           }}
         >
           {i.label}

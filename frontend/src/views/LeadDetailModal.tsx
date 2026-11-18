@@ -31,6 +31,14 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
   if (!isOpen || !lead) return null;
 
+  const breakdown = (() => {
+    try {
+      return lead.score_breakdown_json ? JSON.parse(lead.score_breakdown_json) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const handleRunAgent = async (agentType: 'research' | 'score' | 'qualify') => {
     setIsProcessing(true);
     try {
@@ -72,22 +80,22 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
         {/* Header */}
         <div style={{
           padding: '16px 24px',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: '#ffffff',
+          background: 'var(--card)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--foreground)' }}>
                   {lead.name}
                 </h3>
                 <ScoreBadge score={lead.lead_score} category={lead.score_category} />
                 <StageBadge stage={lead.stage} />
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginTop: '2px' }}>
                 {lead.job_title || 'Lead'} • {lead.company || 'Enterprise'} • {lead.location || 'Pune'}
               </div>
             </div>
@@ -121,57 +129,57 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
         </div>
 
         {/* 3-Column Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 280px', height: '620px', background: '#f8fafc' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 280px', height: '620px', background: 'var(--muted)' }}>
           {/* Column 1: Lead Information & BANT */}
           <div style={{
             padding: '20px',
-            borderRight: '1px solid #e2e8f0',
+            borderRight: '1px solid var(--border)',
             overflowY: 'auto',
-            background: '#ffffff',
+            background: 'var(--card)',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
           }}>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 Contact Details
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px' }}>
                 <div>
-                  <span style={{ color: '#64748b' }}>Email: </span>
-                  <span style={{ color: '#0f172a' }}>{lead.email || '—'}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Email: </span>
+                  <span style={{ color: 'var(--foreground)' }}>{lead.email || '—'}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Phone: </span>
-                  <span style={{ color: '#0f172a' }}>{lead.phone || '—'}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Phone: </span>
+                  <span style={{ color: 'var(--foreground)' }}>{lead.phone || '—'}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Location: </span>
-                  <span style={{ color: '#0f172a' }}>{lead.location || '—'}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Location: </span>
+                  <span style={{ color: 'var(--foreground)' }}>{lead.location || '—'}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Source: </span>
-                  <span style={{ color: '#0f172a' }}>{lead.source}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Source: </span>
+                  <span style={{ color: 'var(--foreground)' }}>{lead.source}</span>
                 </div>
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 Lead Requirements
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px' }}>
                 <div>
-                  <span style={{ color: '#64748b' }}>Budget: </span>
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{lead.budget || '—'}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Budget: </span>
+                  <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{lead.budget || '—'}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Timeline: </span>
-                  <span style={{ color: '#0f172a' }}>{lead.timeline || '—'}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Timeline: </span>
+                  <span style={{ color: 'var(--foreground)' }}>{lead.timeline || '—'}</span>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b' }}>Preference: </span>
-                  <span style={{ color: '#0f172a' }}>{lead.requirements || '—'}</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Preference: </span>
+                  <span style={{ color: 'var(--foreground)' }}>{lead.requirements || '—'}</span>
                 </div>
               </div>
             </div>
@@ -179,37 +187,37 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             {/* BANT Qualification */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase' }}>
                   BANT Qualification
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--success)' }}>
                   {lead.qualification_status}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                  <span style={{ color: '#475569' }}>Budget</span>
-                  <span style={{ fontWeight: 600, color: lead.budget_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.budget_qualified ? '✓ Verified' : 'Pending'}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Budget</span>
+                  <span style={{ fontWeight: 600, color: lead.budget_qualified ? 'var(--success)' : 'var(--warning)' }}>
+                    {lead.budget_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                  <span style={{ color: '#475569' }}>Authority</span>
-                  <span style={{ fontWeight: 600, color: lead.authority_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.authority_qualified ? '✓ Verified' : 'Pending'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Authority</span>
+                  <span style={{ fontWeight: 600, color: lead.authority_qualified ? 'var(--success)' : 'var(--warning)' }}>
+                    {lead.authority_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                  <span style={{ color: '#475569' }}>Need</span>
-                  <span style={{ fontWeight: 600, color: lead.need_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.need_qualified ? '✓ Verified' : 'Pending'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Need</span>
+                  <span style={{ fontWeight: 600, color: lead.need_qualified ? 'var(--success)' : 'var(--warning)' }}>
+                    {lead.need_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                  <span style={{ color: '#475569' }}>Timeline</span>
-                  <span style={{ fontWeight: 600, color: lead.timeline_qualified ? '#16a34a' : '#d97706' }}>
-                    {lead.timeline_qualified ? '✓ Verified' : 'Pending'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--muted-foreground)' }}>Timeline</span>
+                  <span style={{ fontWeight: 600, color: lead.timeline_qualified ? 'var(--success)' : 'var(--warning)' }}>
+                    {lead.timeline_qualified ? (lead.bant_json ? '✓ Confirmed (conversation)' : '✓ Met (lead form)') : 'Not yet'}
                   </span>
                 </div>
               </div>
@@ -221,13 +229,13 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',
-            background: '#ffffff',
-            borderRight: '1px solid #e2e8f0',
+            background: 'var(--card)',
+            borderRight: '1px solid var(--border)',
           }}>
             {/* Tabs */}
             <div style={{
               display: 'flex',
-              borderBottom: '1px solid #e2e8f0',
+              borderBottom: '1px solid var(--border)',
               padding: '0 16px',
             }}>
               <button
@@ -236,8 +244,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 style={{
                   height: '42px',
                   borderRadius: 0,
-                  borderBottom: activeTab === 'overview' ? '2px solid #2563eb' : '2px solid transparent',
-                  color: activeTab === 'overview' ? '#0f172a' : '#64748b',
+                  borderBottom: activeTab === 'overview' ? '2px solid var(--brand)' : '2px solid transparent',
+                  color: activeTab === 'overview' ? 'var(--foreground)' : 'var(--muted-foreground)',
                   fontWeight: activeTab === 'overview' ? 600 : 500,
                 }}
               >
@@ -249,8 +257,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 style={{
                   height: '42px',
                   borderRadius: 0,
-                  borderBottom: activeTab === 'score' ? '2px solid #2563eb' : '2px solid transparent',
-                  color: activeTab === 'score' ? '#0f172a' : '#64748b',
+                  borderBottom: activeTab === 'score' ? '2px solid var(--brand)' : '2px solid transparent',
+                  color: activeTab === 'score' ? 'var(--foreground)' : 'var(--muted-foreground)',
                   fontWeight: activeTab === 'score' ? 600 : 500,
                 }}
               >
@@ -262,8 +270,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 style={{
                   height: '42px',
                   borderRadius: 0,
-                  borderBottom: activeTab === 'outreach' ? '2px solid #2563eb' : '2px solid transparent',
-                  color: activeTab === 'outreach' ? '#0f172a' : '#64748b',
+                  borderBottom: activeTab === 'outreach' ? '2px solid var(--brand)' : '2px solid transparent',
+                  color: activeTab === 'outreach' ? 'var(--foreground)' : 'var(--muted-foreground)',
                   fontWeight: activeTab === 'outreach' ? 600 : 500,
                 }}
               >
@@ -276,10 +284,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               {activeTab === 'overview' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
                       Research Summary
                     </div>
-                    <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#475569' }}>
+                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--muted-foreground)' }}>
                       {lead.research_summary || 'Analysis indicates high-intent corporate buyer seeking proximity to Pune tech hub.'}
                     </p>
                   </div>
@@ -287,14 +295,14 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   {lead.pain_points && (
                     <div style={{
                       padding: '12px 14px',
-                      background: '#fffbeb',
-                      border: '1px solid #fef3c7',
+                      background: 'var(--warning-soft)',
+                      border: '1px solid var(--warning-border)',
                       borderRadius: '6px',
                     }}>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400e', marginBottom: '2px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--warning)', marginBottom: '2px' }}>
                         Identified Pain Points
                       </div>
-                      <div style={{ fontSize: '12px', color: '#b45309' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--warning)' }}>
                         {lead.pain_points}
                       </div>
                     </div>
@@ -326,11 +334,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                         Lead Score: {lead.lead_score}/100
                       </div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>
-                        Conversion probability: {Math.round(lead.conversion_probability * 100)}%
+                      <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
+                        Tier: {lead.score_category} (Cold 0-30, Warm 31-60, Qualified 61-80, Hot 81-100)
                       </div>
                     </div>
 
@@ -344,39 +352,60 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     </button>
                   </div>
 
+                  {breakdown && (
+                    <div style={{ padding: '12px 14px', borderRadius: '6px', background: 'var(--brand-soft)', border: '1px solid var(--brand-border)', fontSize: '13px', color: 'var(--brand)', lineHeight: 1.6 }}>
+                      <div style={{ fontWeight: 600, marginBottom: '4px' }}>How this score is calculated</div>
+                      <div style={{ fontFamily: 'monospace' }}>final = round(0.7 × base) + BANT bonus</div>
+                      <div style={{ fontFamily: 'monospace' }}>
+                        base = {breakdown.profile_points} profile points / {breakdown.profile_max} × 100 = {breakdown.base}
+                      </div>
+                      <div style={{ fontFamily: 'monospace' }}>
+                        BANT bonus = min(30, round(30 × ({breakdown.bant_confirmed}/4)^1.5 + 1.5 × {breakdown.bant_partial})) = {breakdown.bant_bonus}
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                        final = round(0.7 × {breakdown.base}) + {breakdown.bant_bonus} = {breakdown.weighted_base} + {breakdown.bant_bonus} = {breakdown.final}
+                      </div>
+                      <div style={{ marginTop: '6px', color: 'var(--muted-foreground)' }}>
+                        The base works like a model score from the lead's profile. The BANT bonus grows faster with each
+                        slot confirmed in conversation (0, 4, 11, 19, 30 points for 0–4 confirmed), so confirmed evidence
+                        outweighs the profile once the customer states it. BANT source: {breakdown.bant_source}.
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {(lead.score_factors || [
-                      { id: 1, factor_name: 'High Budget Match', score_impact: 25, explanation: 'Budget of ₹80L matches prime 2 BHK inventory', category: 'Budget' },
-                      { id: 2, factor_name: 'Urgent Timeline', score_impact: 20, explanation: '30-day purchasing timeline signifies imminent buying readiness', category: 'Timeline' },
-                      { id: 3, factor_name: 'Specific Requirements', score_impact: 15, explanation: 'Explicit floor plan preferences (2 BHK East-facing)', category: 'Need' },
-                      { id: 4, factor_name: 'Two-Way Engagement', score_impact: 15, explanation: 'Responded positively to outbound introduction', category: 'Engagement' },
-                      { id: 5, factor_name: 'High-Intent Inbound Source', score_impact: 12, explanation: 'Inbound direct website form inquiry with verified phone', category: 'Fit' },
-                    ]).map((factor) => (
+                    {(lead.score_factors || []).length === 0 && (
+                      <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>No score factors yet. Click Recalculate.</div>
+                    )}
+                    {(lead.score_factors || []).map((factor) => (
                       <div
                         key={factor.id}
                         style={{
                           padding: '10px 12px',
                           borderRadius: '6px',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
+                          background: 'var(--muted)',
+                          border: '1px solid var(--border)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                         }}
                       >
                         <div>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                             {factor.factor_name}
+                            <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: '6px' }}>
+                              {factor.category === 'Qualification' ? 'added to final score' : 'profile points'}
+                            </span>
                           </div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
                             {factor.explanation}
                           </div>
                         </div>
 
                         <span style={{
-                          fontSize: '12px',
+                          fontSize: '13px',
                           fontWeight: 600,
-                          color: factor.score_impact >= 0 ? '#16a34a' : '#dc2626',
+                          color: factor.score_impact >= 0 ? 'var(--success)' : 'var(--danger)',
                         }}>
                           {factor.score_impact >= 0 ? `+${factor.score_impact}` : factor.score_impact}
                         </span>
@@ -390,7 +419,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               {activeTab === 'outreach' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                       Generated Outreach Message
                     </div>
                     {generatedOutreach?.content && (
@@ -398,7 +427,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         onClick={() => copyToClipboard(generatedOutreach.content)}
                         className="btn btn-secondary btn-sm"
                       >
-                        {copied ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
+                        {copied ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
                         <span>{copied ? 'Copied' : 'Copy text'}</span>
                       </button>
                     )}
@@ -407,11 +436,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   <div style={{
                     padding: '14px',
                     borderRadius: '6px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '13px',
+                    background: 'var(--muted)',
+                    border: '1px solid var(--border)',
+                    fontSize: '14px',
                     lineHeight: 1.6,
-                    color: '#0f172a',
+                    color: 'var(--foreground)',
                     whiteSpace: 'pre-wrap',
                   }}>
                     {generatedOutreach?.content || 'Click "Draft WhatsApp message" or "Draft Email" to synthesize personalized outreach.'}
@@ -424,29 +453,29 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           {/* Column 3: AI Sales Assistant Panel */}
           <div style={{
             padding: '20px',
-            background: '#ffffff',
+            background: 'var(--card)',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
           }}>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 Sales Assistant Recommendation
               </div>
 
               <div style={{
                 padding: '12px',
                 borderRadius: '6px',
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
+                background: 'var(--success-soft)',
+                border: '1px solid var(--success-border)',
                 marginBottom: '10px',
               }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '4px' }}>
-                  {lead.next_best_action || 'Schedule Property Demo'}
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--success)', marginBottom: '4px' }}>
+                  {lead.next_best_action || 'No next action yet'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#15803d', lineHeight: 1.4 }}>
-                  {lead.next_best_action_reason || 'Prospect has confirmed budget and timeline; recommended for site tour.'}
+                <div style={{ fontSize: '13px', color: 'var(--success)', lineHeight: 1.4 }}>
+                  {lead.next_best_action_reason || ''}
                 </div>
               </div>
 
@@ -478,7 +507,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 Re-Run Agent Evaluation
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

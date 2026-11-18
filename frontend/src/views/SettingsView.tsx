@@ -1,148 +1,74 @@
-import React, { useState } from 'react';
-import { RotateCcw, Check } from 'lucide-react';
-import { IndustryOption } from '../types';
+import React, { useEffect, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { api } from '../services/api';
+
+interface Integration {
+  name: string;
+  kind: 'real' | 'simulated' | 'fallback';
+  badge: string;
+  configured: boolean;
+  detail: string;
+}
 
 interface SettingsViewProps {
-  industries: IndustryOption[];
-  activeIndustry: string;
-  onSelectIndustry: (id: string) => void;
   onResetDemo: () => void;
   isResetting: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  industries,
-  activeIndustry,
-  onSelectIndustry,
   onResetDemo,
   isResetting,
 }) => {
-  const [provider, setProvider] = useState('mock');
-  const [apiKey, setApiKey] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [error, setError] = useState('');
 
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  useEffect(() => {
+    api.getIntegrations()
+      .then((r) => setIntegrations(r.integrations))
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load integrations'));
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '780px' }}>
       {/* Header */}
       <div>
         <h2>Settings</h2>
-        <p>Configure industry playbooks, reasoning foundation, and test environment state.</p>
+        <p>Integration status and demo data for the Celestial Wear demo.</p>
       </div>
 
-      {/* Industry Playbook Card */}
+      {/* Integrations: status comes from GET /api/integrations, nothing is configured from the browser */}
       <div className="card">
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
-          Industry Playbook
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
+          Integrations
         </div>
-        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
-          The multi-agent workforce dynamically reconfigures qualification criteria and objection scripts based on the selected industry:
+        <p style={{ fontSize: '14px', color: 'var(--muted-foreground)', marginBottom: '14px' }}>
+          What is really connected. Keys and SMTP settings live in <code>backend/.env</code> (restart the backend after changing them).
         </p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-          {industries.map((ind) => {
-            const isSelected = activeIndustry === ind.id;
-            return (
-              <div
-                key={ind.id}
-                onClick={() => onSelectIndustry(ind.id)}
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '6px',
-                  background: isSelected ? '#eff6ff' : '#ffffff',
-                  border: `1px solid ${isSelected ? '#2563eb' : '#e2e8f0'}`,
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
-                    {ind.name}
-                  </span>
-                  {isSelected && (
-                    <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
-                      Active
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
-                  {ind.description}
-                </div>
+        {error && <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{error}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {integrations.map((i) => (
+            <div key={i.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start',
+              padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '6px' }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>{i.name}</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>{i.detail}</div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* LLM Engine Configuration */}
-      <div className="card">
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
-          Reasoning Engine
-        </div>
-        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
-          By default, the platform runs on a <strong>Deterministic Local Engine</strong> allowing offline execution without external API keys.
-        </p>
-
-        <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
-              LLM Provider
-            </label>
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="form-select"
-              style={{ height: '34px', fontSize: '13px' }}
-            >
-              <option value="mock">Deterministic Local Mock Engine (Offline evaluation)</option>
-              <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
-              <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
-              <option value="groq">Groq (Llama-3-70B)</option>
-              <option value="ollama">Ollama (localhost:11434)</option>
-            </select>
-          </div>
-
-          {provider !== 'mock' && (
-            <div>
-              <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
-                API Key for {provider.toUpperCase()}
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
-                className="form-input"
-                style={{ height: '34px', fontSize: '13px' }}
-              />
-            </div>
-          )}
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button type="submit" className="btn btn-primary btn-sm">
-              Save Configuration
-            </button>
-            {saved && (
-              <span style={{ fontSize: '12px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Check size={14} />
-                <span>Saved successfully</span>
+              <span className={`badge ${i.kind === 'real' ? (i.configured ? 'badge-green' : 'badge-red') : 'badge-amber'}`}
+                style={{ whiteSpace: 'nowrap' }}>
+                {i.kind === 'real' && !i.configured ? `${i.badge} · not configured` : i.badge}
               </span>
-            )}
-          </div>
-        </form>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Database State */}
       <div className="card">
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
           Demo Data State
         </div>
-        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
-          Reset the SQLite database and restore the default demo dataset (Rahul Sharma, Priya Mehta, Amit Patil).
+        <p style={{ fontSize: '14px', color: 'var(--muted-foreground)', marginBottom: '14px' }}>
+          Delete all data and reload the Celestial Wear demo seed: 12 retail leads, 4 knowledge documents, 5 conversations, 3 meetings and follow-ups.
         </p>
 
         <button
@@ -151,7 +77,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className="btn btn-secondary btn-sm"
         >
           <RotateCcw size={13} className={isResetting ? 'spin' : ''} />
-          <span>{isResetting ? 'Resetting...' : 'Restore Default Demo Data'}</span>
+          <span>{isResetting ? 'Resetting...' : 'Reset demo data'}</span>
         </button>
       </div>
     </div>

@@ -49,7 +49,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
       const call = await api.initiateCall(selectedLeadId, selectedLead?.phone);
       setCallSession(call);
       setIsCalling(true);
-      const initialText = `Hello ${selectedLead?.name?.split(' ')[0]}! This is Maya from Skyline Living following up on your inquiry. Is now a good time to speak for two minutes?`;
+      const initialText = `Hello ${selectedLead?.name?.split(' ')[0] || 'there'}, this is the AI assistant from Celestial Wear. I'm an AI, not a person. I'm calling about your enquiry for bulk apparel. Is now a good time for two minutes?`;
       setTranscriptTurns([
         { speaker: 'ai', text: initialText }
       ]);
@@ -102,10 +102,11 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
 
   const VOICE_PROMPTS = [
     'Hello, who is this calling?',
-    'What is the price of 2 BHK in Hinjawadi?',
-    '₹80 lakh is slightly on the higher side. Are there discounts?',
-    'Can we book a VIP site visit this Saturday at 11 AM?',
-    'Yes, Saturday 11 AM works perfectly for me.',
+    'What is the price for crew tees in bulk?',
+    'That is too expensive for us.',
+    'I only need about 30 pieces, is there a minimum order?',
+    'How long does delivery take?',
+    'Can we do a sample review call on Friday?',
   ];
 
   return (
@@ -114,18 +115,18 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2>Voice Agent</h2>
-          <p>Real-time conversational telephony with live transcript and CRM notes synchronization.</p>
+          <p>Browser voice session: replies are spoken with your browser's text-to-speech. You type or pick the customer's lines (no speech-to-text). No phone call is placed.</p>
         </div>
 
         {/* Lead Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Target Prospect:</span>
+          <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>Target Prospect:</span>
           <select
             value={selectedLeadId}
             disabled={isCalling}
             onChange={(e) => setSelectedLeadId(Number(e.target.value))}
             className="form-select"
-            style={{ width: 'auto', height: '32px', fontSize: '12px' }}
+            style={{ width: 'auto', height: '32px', fontSize: '13px' }}
           >
             {leads.map((l) => (
               <option key={l.id} value={l.id}>
@@ -147,22 +148,22 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
             justifyContent: 'space-between',
             padding: '12px 16px',
             borderRadius: '6px',
-            background: isCalling ? '#eff6ff' : '#f8fafc',
-            border: `1px solid ${isCalling ? '#bfdbfe' : '#e2e8f0'}`,
+            background: isCalling ? 'var(--brand-soft)' : 'var(--muted)',
+            border: `1px solid ${isCalling ? 'var(--brand-border)' : 'var(--border)'}`,
             marginBottom: '16px',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>
                 {selectedLead?.name}
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b' }}>
+              <div style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
                 {selectedLead?.phone || '+91 98201 44821'} • {selectedLead?.requirements}
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               {isCalling && (
-                <div style={{ fontSize: '14px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#2563eb' }}>
+                <div style={{ fontSize: '14px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--brand)' }}>
                   {formatDuration(duration)}
                 </div>
               )}
@@ -192,12 +193,12 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
             gap: '10px',
             padding: '14px',
             borderRadius: '6px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
             marginBottom: '16px',
           }}>
             {transcriptTurns.length === 0 ? (
-              <div style={{ margin: 'auto', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: '14px' }}>
                 Click "Start Outbound Call" to initiate conversation.
               </div>
             ) : (
@@ -214,16 +215,16 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
                       maxWidth: '85%',
                     }}
                   >
-                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>
-                      {isCustomer ? selectedLead?.name : 'Maya (Voice Agent)'}
+                    <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', marginBottom: '2px' }}>
+                      {isCustomer ? selectedLead?.name : 'Celestial Wear AI assistant'}
                     </div>
                     <div style={{
                       padding: '8px 12px',
                       borderRadius: '6px',
-                      background: isCustomer ? '#0f172a' : '#f8fafc',
-                      color: isCustomer ? '#ffffff' : '#0f172a',
-                      border: isCustomer ? 'none' : '1px solid #e2e8f0',
-                      fontSize: '13px',
+                      background: isCustomer ? 'var(--foreground)' : 'var(--muted)',
+                      color: isCustomer ? 'var(--card)' : 'var(--foreground)',
+                      border: isCustomer ? 'none' : '1px solid var(--border)',
+                      fontSize: '14px',
                       lineHeight: 1.5,
                     }}>
                       {turn.text}
@@ -237,7 +238,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
           {/* Spoken Utterance Simulator */}
           {isCalling && (
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', marginBottom: '6px' }}>
                 Simulate Prospect Speech:
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
@@ -246,7 +247,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
                     key={idx}
                     onClick={() => handleSendVoiceUtterance(p)}
                     className="btn btn-secondary btn-sm"
-                    style={{ height: '26px', fontSize: '11px' }}
+                    style={{ height: '26px', fontSize: '12px' }}
                   >
                     <span>"{p}"</span>
                   </button>
@@ -263,7 +264,7 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
                     if (e.key === 'Enter') handleSendVoiceUtterance(spokenInput);
                   }}
                   className="form-input"
-                  style={{ height: '32px', fontSize: '13px' }}
+                  style={{ height: '32px', fontSize: '14px' }}
                 />
                 <button
                   onClick={() => handleSendVoiceUtterance(spokenInput)}
@@ -281,24 +282,24 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
         {/* Right: Telemetry & Summary */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="card">
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '10px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '10px' }}>
               Call Telemetry
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                <span style={{ color: '#64748b' }}>Status</span>
-                <span style={{ fontWeight: 600, color: isCalling ? '#16a34a' : '#64748b' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                <span style={{ color: 'var(--muted-foreground)' }}>Status</span>
+                <span style={{ fontWeight: 600, color: isCalling ? 'var(--success)' : 'var(--muted-foreground)' }}>
                   {isCalling ? '● In Progress' : 'Idle'}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                <span style={{ color: '#64748b' }}>Detected Intent</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>{currentIntent}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                <span style={{ color: 'var(--muted-foreground)' }}>Detected Intent</span>
+                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{currentIntent}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px' }}>
-                <span style={{ color: '#64748b' }}>Sentiment</span>
-                <span style={{ fontWeight: 600, color: currentSentiment === 'Hesitant' ? '#d97706' : '#16a34a' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--muted)', borderRadius: '4px' }}>
+                <span style={{ color: 'var(--muted-foreground)' }}>Sentiment</span>
+                <span style={{ fontWeight: 600, color: currentSentiment === 'Hesitant' ? 'var(--warning)' : 'var(--success)' }}>
                   {currentSentiment}
                 </span>
               </div>
@@ -307,20 +308,20 @@ export const VoiceAgentView: React.FC<VoiceAgentViewProps> = ({ leads, onRefresh
 
           {/* Post Call Notes */}
           {callEndedSummary && (
-            <div className="card" style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#166534', marginBottom: '6px' }}>
-                <CheckCircle2 size={15} color="#16a34a" />
-                <span>Call Summary &amp; CRM Sync</span>
+            <div className="card" style={{ background: 'var(--success-soft)', borderColor: 'var(--success-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, color: 'var(--success)', marginBottom: '6px' }}>
+                <CheckCircle2 size={15} color="var(--success)" />
+                <span>Call summary (saved to the internal CRM)</span>
               </div>
 
-              <div style={{ fontSize: '12px', color: '#15803d', lineHeight: 1.4, marginBottom: '8px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--success)', lineHeight: 1.4, marginBottom: '8px' }}>
                 {callEndedSummary.summary}
               </div>
 
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#166534', marginBottom: '2px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--success)', marginBottom: '2px' }}>
                 Action Items:
               </div>
-              <div style={{ fontSize: '11px', color: '#15803d', whiteSpace: 'pre-wrap' }}>
+              <div style={{ fontSize: '12px', color: 'var(--success)', whiteSpace: 'pre-wrap' }}>
                 {callEndedSummary.action_items}
               </div>
             </div>

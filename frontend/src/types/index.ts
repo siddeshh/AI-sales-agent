@@ -18,6 +18,10 @@ export interface Lead {
   budget?: string;
   budget_numeric?: number;
   requirements?: string;
+  order_quantity?: number | null;
+  buyer_type?: string | null;
+  bant_json?: string | null;
+  score_breakdown_json?: string | null;
   timeline?: string;
   source: string;
   lead_score: number;
@@ -52,6 +56,8 @@ export interface Message {
   sentiment?: string;
   detected_objection?: string;
   confidence?: number;
+  provider?: string | null;
+  sources_json?: string | null;
   created_at: string;
 }
 
@@ -139,11 +145,12 @@ export interface FollowUp {
   lead_name?: string;
   cadence_step: number;
   due_date: string;
-  status: 'pending' | 'completed' | 'overdue' | 'cancelled';
+  status: 'pending' | 'sent' | 'not_sent' | 'simulated';
   channel: string;
   title: string;
   message_content?: string;
   executed_at?: string;
+  send_error?: string | null;
   created_at: string;
 }
 
@@ -162,19 +169,24 @@ export interface DashboardMetrics {
     total_leads: number;
     new_leads: number;
     hot_leads: number;
-    qualified_leads: number;
+    bant_qualified_leads: number;
     meetings_scheduled: number;
-    conversion_rate: number;
+    leads_with_meeting: number;
+    won_leads: number;
+    meeting_rate: number;
+    win_rate: number;
     pipeline_value_inr: number;
     ai_conversations_count: number;
     active_followups: number;
   };
+  formulas: Record<string, string>;
   funnel: Array<{
     stage: string;
     count: number;
     percentage: number;
   }>;
   score_distribution: Record<string, number>;
+  objections: Array<{ type: string; count: number; percentage: number; addressed: number }>;
   insights: AIInsight[];
 }
 
@@ -186,6 +198,7 @@ export interface AgentInfo {
   description: string;
   icon: string;
   invocations_count: number;
+  avg_duration_ms?: number | null;
 }
 
 export interface AgentActivity {
@@ -197,14 +210,7 @@ export interface AgentActivity {
   description: string;
   details?: string;
   status: string;
+  duration_ms?: number | null;
   created_at: string;
 }
 
-export interface IndustryOption {
-  id: string;
-  name: string;
-  lead_sample: string;
-  meeting_type: string;
-  currency: string;
-  description: string;
-}

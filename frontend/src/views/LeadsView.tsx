@@ -33,10 +33,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  const [newBudget, setNewBudget] = useState('₹80 lakh');
-  const [newLocation, setNewLocation] = useState('Pune');
-  const [newRequirements, setNewRequirements] = useState('2 BHK, Hinjawadi Phase 1');
-  const [newTimeline, setNewTimeline] = useState('Within 30 days');
+  const [newCompany, setNewCompany] = useState('');
+  const [newBudget, setNewBudget] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newRequirements, setNewRequirements] = useState('');
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newBuyerType, setNewBuyerType] = useState('wholesale');
+  const [newSource, setNewSource] = useState('Website Form');
+  const [newTimeline, setNewTimeline] = useState('');
 
   const filteredLeads = leads.filter((l) => {
     const matchesSearch =
@@ -76,11 +80,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         name: newName,
         email: newEmail,
         phone: newPhone,
-        budget: newBudget,
-        location: newLocation,
-        requirements: newRequirements,
-        timeline: newTimeline,
-        industry: 'real_estate',
+        company: newCompany || undefined,
+        budget: newBudget || undefined,
+        location: newLocation || undefined,
+        requirements: newRequirements || undefined,
+        order_quantity: newQuantity ? Number(newQuantity) : undefined,
+        buyer_type: newBuyerType,
+        source: newSource,
+        timeline: newTimeline || undefined,
+        industry: 'retail',
       });
       setIsAddModalOpen(false);
       setNewName('');
@@ -123,14 +131,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       {/* Filter and Search Bar */}
       <div className="card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px' }}>
-          <Search size={15} color="#94a3b8" />
+          <Search size={15} color="var(--muted-foreground)" />
           <input
             type="text"
             placeholder="Search leads by name, location, or requirements..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="form-input"
-            style={{ height: '32px', fontSize: '13px' }}
+            style={{ height: '32px', fontSize: '14px' }}
           />
         </div>
 
@@ -139,7 +147,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           value={selectedStage}
           onChange={(e) => setSelectedStage(e.target.value)}
           className="form-select"
-          style={{ width: 'auto', height: '32px', fontSize: '12px' }}
+          style={{ width: 'auto', height: '32px', fontSize: '13px' }}
         >
           <option value="all">All Stages</option>
           <option value="new">New</option>
@@ -155,7 +163,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           value={selectedScoreCat}
           onChange={(e) => setSelectedScoreCat(e.target.value)}
           className="form-select"
-          style={{ width: 'auto', height: '32px', fontSize: '12px' }}
+          style={{ width: 'auto', height: '32px', fontSize: '13px' }}
         >
           <option value="all">All Scores</option>
           <option value="hot">Hot (81-100)</option>
@@ -173,9 +181,9 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               <th style={{ width: '36px' }}>
                 <span onClick={handleSelectAll} style={{ cursor: 'pointer' }}>
                   {selectedLeadIds.length > 0 && selectedLeadIds.length === filteredLeads.length ? (
-                    <CheckSquare size={15} color="#2563eb" />
+                    <CheckSquare size={15} color="var(--brand)" />
                   ) : (
-                    <Square size={15} color="#94a3b8" />
+                    <Square size={15} color="var(--muted-foreground)" />
                   )}
                 </span>
               </th>
@@ -192,7 +200,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           <tbody>
             {filteredLeads.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-foreground)' }}>
                   No leads matching criteria.
                 </td>
               </tr>
@@ -204,30 +212,30 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   <tr
                     key={lead.id}
                     onClick={() => onOpenLead(lead)}
-                    style={{ cursor: 'pointer', background: isSelected ? '#f8fafc' : undefined }}
+                    style={{ cursor: 'pointer', background: isSelected ? 'var(--muted)' : undefined }}
                   >
                     <td onClick={(e) => handleToggleSelect(lead.id, e)}>
                       {isSelected ? (
-                        <CheckSquare size={15} color="#2563eb" />
+                        <CheckSquare size={15} color="var(--brand)" />
                       ) : (
-                        <Square size={15} color="#cbd5e1" />
+                        <Square size={15} color="var(--border)" />
                       )}
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{lead.name}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>{lead.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
                         {lead.email || lead.phone || 'Inbound'}
                       </div>
                     </td>
                     <td>
-                      <div style={{ color: '#0f172a' }}>{lead.location || 'Pune'}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>
-                        {lead.requirements || '2 BHK Apartment'}
+                      <div style={{ color: 'var(--foreground)' }}>{lead.location || '—'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
+                        {lead.requirements || ''}{lead.order_quantity ? ` · ${lead.order_quantity} pcs` : ''}
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                        {lead.budget || '₹80 lakh'}
+                      <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>
+                        {lead.budget || '—'}
                       </span>
                     </td>
                     <td>
@@ -245,7 +253,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                       <StageBadge stage={lead.stage} />
                     </td>
                     <td style={{ maxWidth: '220px' }}>
-                      <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 500 }}>
+                      <span style={{ fontSize: '13px', color: 'var(--brand)', fontWeight: 500 }}>
                         {lead.next_best_action || 'Send outreach'}
                       </span>
                     </td>
@@ -257,7 +265,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                           style={{ padding: '4px' }}
                           title="Open Chat"
                         >
-                          <MessageSquare size={14} color="#64748b" />
+                          <MessageSquare size={14} color="var(--muted-foreground)" />
                         </button>
                         <button
                           onClick={() => onOpenVoice(lead)}
@@ -265,7 +273,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                           style={{ padding: '4px' }}
                           title="Voice Call"
                         >
-                          <PhoneCall size={14} color="#64748b" />
+                          <PhoneCall size={14} color="var(--muted-foreground)" />
                         </button>
                         <button
                           onClick={(e) => handleDelete(lead.id, e)}
@@ -273,7 +281,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                           style={{ padding: '4px' }}
                           title="Delete"
                         >
-                          <Trash2 size={14} color="#dc2626" />
+                          <Trash2 size={14} color="var(--danger)" />
                         </button>
                       </div>
                     </td>
@@ -289,10 +297,10 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       {isAddModalOpen && (
         <div className="modal-overlay">
           <div className="modal-box" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '16px', color: '#0f172a', marginBottom: '16px' }}>Add Lead</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--foreground)', marginBottom: '16px' }}>Add Lead</h3>
             <form onSubmit={handleCreateLead} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Full Name *
                 </label>
                 <input
@@ -307,7 +315,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                     Email
                   </label>
                   <input
@@ -319,7 +327,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                     Phone
                   </label>
                   <input
@@ -334,53 +342,96 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                     Budget
                   </label>
                   <input
                     type="text"
                     value={newBudget}
                     onChange={(e) => setNewBudget(e.target.value)}
-                    placeholder="e.g. ₹80 lakh"
+                    placeholder="e.g. ₹1,20,000"
                     className="form-input"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                     Location
                   </label>
                   <input
                     type="text"
                     value={newLocation}
                     onChange={(e) => setNewLocation(e.target.value)}
-                    placeholder="e.g. Hinjawadi Pune"
+                    placeholder="e.g. Kochi"
                     className="form-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Requirements
                 </label>
                 <input
                   type="text"
                   value={newRequirements}
                   onChange={(e) => setNewRequirements(e.target.value)}
-                  placeholder="e.g. 2 BHK East-Facing, high floor"
+                  placeholder="e.g. Printed crew tees, mixed sizes"
                   className="form-input"
                 />
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Company
+                  </label>
+                  <input type="text" value={newCompany} onChange={(e) => setNewCompany(e.target.value)}
+                    placeholder="e.g. Threadline Boutique" className="form-input" />
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Order quantity (pieces)
+                  </label>
+                  <input type="number" min={1} value={newQuantity} onChange={(e) => setNewQuantity(e.target.value)}
+                    placeholder="e.g. 150" className="form-input" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Buyer type
+                  </label>
+                  <select value={newBuyerType} onChange={(e) => setNewBuyerType(e.target.value)} className="form-select">
+                    <option value="wholesale">Wholesale (boutique / reseller)</option>
+                    <option value="corporate">Corporate / institutional</option>
+                    <option value="individual">Individual</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                    Source
+                  </label>
+                  <select value={newSource} onChange={(e) => setNewSource(e.target.value)} className="form-select">
+                    <option>Website Form</option>
+                    <option>Instagram</option>
+                    <option>WhatsApp</option>
+                    <option>Trade Fair</option>
+                    <option>Referral</option>
+                    <option>CSV Import</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '13px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
                   Timeline
                 </label>
                 <input
                   type="text"
                   value={newTimeline}
                   onChange={(e) => setNewTimeline(e.target.value)}
-                  placeholder="e.g. Within 30 days"
+                  placeholder="e.g. Within 3 weeks"
                   className="form-input"
                 />
               </div>

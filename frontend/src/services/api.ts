@@ -1,18 +1,17 @@
 import { 
   Lead, Conversation, CallSession, KnowledgeDocument, 
   KnowledgeChunk, Meeting, MeetingSlot, FollowUp, 
-  DashboardMetrics, AgentInfo, AgentActivity, IndustryOption 
+  DashboardMetrics, AgentInfo, AgentActivity
 } from '../types';
 
 const API_BASE = '/api';
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  // FormData uploads must let the browser set the multipart boundary, so no JSON header for them
+  const isForm = options.body instanceof FormData;
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Trans-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers: isForm ? options.headers : { 'Content-Type': 'application/json', ...options.headers },
   });
 
   if (!res.ok) {
@@ -140,11 +139,11 @@ export const api = {
     return request<{ message: string }>(`/knowledge/${id}`, { method: 'DELETE' });
   },
 
-  async queryRAG(query: string, industry: string = 'real_estate'): Promise<any> {
+  async queryRAG(query: string): Promise<any> {
     return request('/knowledge/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, industry }),
+      body: JSON.stringify({ query }),
     });
   },
 
@@ -203,19 +202,24 @@ export const api = {
     return request<AgentActivity[]>(`/agents/activities?limit=${limit}`);
   },
 
+  // Offline lead-scoring experiment (ml/lead_scoring)
+  async getLeadScoringExperiment(): Promise<any> {
+    return request('/ml/lead-scoring');
+  },
+
+  async getIntegrations(): Promise<{ integrations: any[] }> {
+    return request('/integrations');
+  },
+
+  async getDashboardOverview(): Promise<any> {
+    return request('/dashboard/overview');
+  },
+
+  async getLeadTimeline(leadId: number): Promise<any[]> {
+    return request(`/leads/${leadId}/timeline`);
+  },
+
   // Demo Controls
-  async getIndustries(): Promise<{ current_industry: string; available_industries: IndustryOption[] }> {
-    return request('/demo/industries');
-  },
-
-  async switchIndustry(industryId: string): Promise<any> {
-    return request('/demo/switch-industry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ industry_id: industryId }),
-    });
-  },
-
   async resetDemoData(): Promise<any> {
     return request('/demo/reset', { method: 'POST' });
   },

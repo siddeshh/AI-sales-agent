@@ -4,10 +4,11 @@ from datetime import datetime
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.models.entities import Meeting, Lead, AgentActivityLog
+from app.models.entities import Meeting, Lead
 from app.schemas.schemas import MeetingCreate, MeetingOut
 from app.agents.scheduling_agent import SchedulingAgent
 from app.agents.crm_agent import CRMAgent
+from app.services.activity import agent_run
 
 router = APIRouter(prefix="/meetings", tags=["Meeting Scheduling"])
 
@@ -35,24 +36,28 @@ def schedule_meeting(payload: MeetingCreate, db: Session = Depends(get_db)):
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    meeting = Meeting(
-        lead_id=payload.lead_id,
-        title=payload.title,
-        meeting_type=payload.meeting_type,
-        scheduled_time=payload.scheduled_time,
-        duration_minutes=payload.duration_minutes,
-        location_or_link=payload.location_or_link or "Skyline Experience Centre, Hinjawadi Pune",
-        notes=payload.notes,
-        status="scheduled"
-    )
-    db.add(meeting)
+    with agent_run(db, "Scheduling Agent", "meeting_booked", lead) as run:
+        meeting = Meeting(
+            lead_id=payload.lead_id,
+            title=payload.title,
+            meeting_type=payload.meeting_type,
+            scheduled_time=payload.scheduled_time,
+            duration_minutes=payload.duration_minutes,
+            location_or_link=payload.location_or_link or ("Celestial Wear Studio, Indiranagar, Bengaluru"
+                                                         if payload.meeting_type == "showroom_visit" else "Video call (link not generated)"),
+            notes=payload.notes,
+            status="scheduled"
+        )
+        db.add(meeting)
+        label = "showroom visit" if payload.meeting_type == "showroom_visit" else "product demo / sample review call"
+        run["description"] = f"Booked a {label} with {lead.name}, {payload.scheduled_time.strftime('%a %d %b, %I:%M %p')}."
 
     # Automatically advance lead stage in CRM
     CRMAgent.update_lead_state(
         lead, db,
         stage="Meeting Scheduled",
-        next_action=f"Host {payload.meeting_type.replace('_', ' ').title()}: Prepare VIP dossier",
-        next_action_reason="Site visit / demo appointment confirmed."
+        next_action=f"Prepare for {payload.meeting_type.replace('_', ' ')}: samples, swatches and quote",
+        next_action_reason="Product demo / showroom visit booked."
     )
 
     db.commit()

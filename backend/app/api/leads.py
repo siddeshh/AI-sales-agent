@@ -4,13 +4,13 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.core.database import get_db
-from app.models.entities import Lead, LeadScoreFactor
+from app.models.entities import Lead
 from app.schemas.schemas import LeadCreate, LeadUpdate, LeadOut
 from app.agents.orchestrator import WorkforceOrchestrator
 from app.agents.lead_research_agent import LeadResearchAgent
-from app.agents.lead_scoring_agent import LeadScoringAgent
-from app.agents.qualification_agent import QualificationAgent
+from app.agents.qualification_agent import LeadQualificationAgent
 from app.agents.communication_agent import SalesCommunicationAgent
+from app.services.activity import agent_run
 
 router = APIRouter(prefix="/leads", tags=["Leads"])
 
@@ -38,16 +38,11 @@ def get_leads(
 
 @router.post("", response_model=LeadOut)
 def create_lead(payload: LeadCreate, auto_run_ai: bool = True, db: Session = Depends(get_db)):
-    # Parse numeric budget if given as string
+    # "₹1,20,000" / "120000" → 120000.0; no budget stays 0 (never invent one)
     numeric_budget = payload.budget_numeric
     if not numeric_budget and payload.budget:
-        b_str = payload.budget.lower()
-        if "crore" in b_str or "cr" in b_str:
-            num = float("".join([c for c in b_str if c.isdigit() or c == '.']) or 1)
-            numeric_budget = num * 10000000.0
-        elif "lakh" in b_str:
-            num = float("".join([c for c in b_str if c.isdigit() or c == '.']) or 50)
-            numeric_budget = num * 100000.0
+        digits = "".join(c for c in payload.budget if c.isdigit() or c == ".")
+        numeric_budget = float(digits) if digits.replace(".", "") else 0.0
 
     new_lead = Lead(
         name=payload.name,
@@ -58,8 +53,10 @@ def create_lead(payload: LeadCreate, auto_run_ai: bool = True, db: Session = Dep
         job_title=payload.job_title,
         location=payload.location,
         budget=payload.budget,
-        budget_numeric=numeric_budget or 8000000.0,
+        budget_numeric=numeric_budget or 0.0,
         requirements=payload.requirements,
+        order_quantity=payload.order_quantity,
+        buyer_type=payload.buyer_type,
         timeline=payload.timeline,
         source=payload.source,
         assigned_rep=payload.assigned_rep or "AI Sales Workforce",
@@ -112,10 +109,12 @@ def trigger_lead_research(lead_id: int, db: Session = Depends(get_db)):
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    res = LeadResearchAgent.research_lead(lead)
-    lead.research_summary = res["research_summary"]
-    lead.pain_points = res["pain_points"]
-    lead.buying_intent = res["buying_intent"]
+    with agent_run(db, "Research Agent", "research", lead) as run:
+        res = LeadResearchAgent.research_lead(lead)
+        lead.research_summary = res["research_summary"]
+        lead.pain_points = res["pain_points"]
+        lead.buying_intent = res["buying_intent"]
+        run["description"] = f"Re-profiled {lead.name} as a {res['persona_type'].lower()}."
     db.commit()
     return res
 
@@ -125,23 +124,9 @@ def trigger_lead_score(lead_id: int, db: Session = Depends(get_db)):
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    res = LeadScoringAgent.score_lead(lead)
-    lead.lead_score = res["lead_score"]
-    lead.conversion_probability = res["conversion_probability"]
-    lead.score_category = res["score_category"]
-    
-    # Refresh factors
-    db.query(LeadScoreFactor).filter(LeadScoreFactor.lead_id == lead.id).delete()
-    for f in res["factors"]:
-        factor_obj = LeadScoreFactor(
-            lead_id=lead.id,
-            factor_name=f["factor_name"],
-            score_impact=f["score_impact"],
-            explanation=f["explanation"],
-            category=f["category"]
-        )
-        db.add(factor_obj)
-
+    with agent_run(db, "Lead Qualification Agent", "score", lead) as run:
+        res = LeadQualificationAgent.apply(lead, db)
+        run["description"] = f"Re-scored {lead.name}: {lead.lead_score}/100 ({lead.score_category})."
     db.commit()
     db.refresh(lead)
     return res
@@ -152,13 +137,9 @@ def trigger_lead_qualification(lead_id: int, db: Session = Depends(get_db)):
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    res = QualificationAgent.evaluate_bant(lead)
-    lead.qualification_status = res["qualification_status"]
-    b = res["bant_breakdown"]
-    lead.budget_qualified = b["budget_qualified"]
-    lead.authority_qualified = b["authority_qualified"]
-    lead.need_qualified = b["need_qualified"]
-    lead.timeline_qualified = b["timeline_qualified"]
+    with agent_run(db, "Lead Qualification Agent", "qualify", lead) as run:
+        res = LeadQualificationAgent.apply_bant_checklist(lead)
+        run["description"] = f"Re-checked {lead.name}'s BANT from the lead form: {lead.qualification_status.lower()}."
     db.commit()
     return res
 
@@ -168,4 +149,8 @@ def generate_lead_outreach(lead_id: int, channel: str = "whatsapp", db: Session 
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    return SalesCommunicationAgent.generate_outreach(lead, channel=channel)
+    with agent_run(db, "Communication Agent", "outreach_draft", lead) as run:
+        draft = SalesCommunicationAgent.generate_outreach(lead, channel=channel)
+        run["description"] = f"Drafted a {channel} message for {lead.name} (not sent)."
+    db.commit()
+    return draft

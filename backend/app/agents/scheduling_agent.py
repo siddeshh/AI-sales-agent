@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+from app.services.llm import chat, build_sales_system, provider_label, LLMUnavailable
 
 class SchedulingAgent:
     """
-    Agent I: Scheduling Agent
+    Agent 7 of 10: Scheduling Agent
     Responsibilities:
-    - Checks calendar availability against enterprise working hours (10 AM - 6 PM IST)
-    - Proposes high-convenience slots (Site Visits, Demos, Calls)
+    - Proposes slots within showroom hours (11 AM - 7 PM IST, Mon-Sat); does NOT check a real calendar yet
+    - Meeting types: product demo / sample review call (video call) or showroom visit (Bengaluru studio)
     - Books, cancels, and reschedules appointments
     - Prepares calendar invites & location access tokens
     """
@@ -23,8 +24,9 @@ class SchedulingAgent:
 
         for d in range(1, days_ahead + 1):
             target_date = now + timedelta(days=d)
-            # Skip Sundays if desired or treat as prime weekend visit days
-            is_weekend = target_date.weekday() in [5, 6]
+            if target_date.weekday() == 6:
+                continue  # showroom closed on Sundays
+            is_weekend = target_date.weekday() == 5
             
             for h in preferred_hours:
                 slot_time = target_date.replace(hour=h, minute=0, second=0, microsecond=0)
@@ -35,7 +37,7 @@ class SchedulingAgent:
                     "date": slot_time.strftime("%Y-%m-%d"),
                     "time": slot_time.strftime("%I:%M %p"),
                     "is_weekend": is_weekend,
-                    "recommended_for": "Site Visit" if is_weekend else "Virtual Sales Consultation"
+                    "recommended_for": "Showroom visit or sample review call"
                 })
 
         return slots
@@ -48,14 +50,13 @@ class SchedulingAgent:
             dt = datetime.utcnow() + timedelta(days=2, hours=3)
 
         type_labels = {
-            "site_visit": "VIP On-Site Experience & Sample Flat Walkthrough",
-            "sales_call": "1-on-1 Discovery Phone Consultation",
-            "product_demo": "Live 3D Virtual Township Walkthrough",
-            "consultation": "Home Loan & Financial Structuring Session"
+            "product_demo": "Product demo / sample review call",
+            "showroom_visit": "Showroom visit",
         }
 
-        meeting_title = f"{type_labels.get(meeting_type, 'Sales Meeting')} with {lead_name}"
-        location = "Skyline Experience Centre, Phase 1 Hinjawadi, Pune" if meeting_type == "site_visit" else "Google Meet / Phone Call"
+        meeting_title = f"{type_labels.get(meeting_type, 'Sales meeting')} with {lead_name}"
+        location = ("Celestial Wear Studio, Indiranagar, Bengaluru" if meeting_type == "showroom_visit"
+                    else "Video call (link not generated)")
 
         return {
             "agent_name": cls.AGENT_NAME,
@@ -63,12 +64,32 @@ class SchedulingAgent:
             "title": meeting_title,
             "meeting_type": meeting_type,
             "scheduled_time": dt,
-            "duration_minutes": 60 if meeting_type == "site_visit" else 30,
+            "duration_minutes": 60 if meeting_type == "showroom_visit" else 30,
             "location_or_link": location,
             "status": "scheduled",
             "confirmation_message": (
                 f"Your {type_labels.get(meeting_type, 'meeting')} has been booked for "
-                f"{dt.strftime('%A, %d %B %Y at %I:%M %p')}. "
-                f"Directions and confirmation pass have been dispatched."
+                f"{dt.strftime('%A, %d %B %Y at %I:%M %p')}."
             )
         }
+
+    @classmethod
+    def generate_reply(cls, lead, history: List[Dict[str, str]], days_ahead: int = 5) -> Dict[str, Any]:
+        """LLM reply that offers only the real free slots; falls back to the numbered slot list."""
+        slots = cls.get_available_slots(days_ahead=days_ahead)
+        slot_list = "\n".join(f"- {s['display']} ({s['recommended_for']})" for s in slots)
+        fallback = (
+            "I'd be happy to set up a sample review call or showroom visit. These slots are open:\n\n"
+            + "\n".join(f"{i}) {s['display']}" for i, s in enumerate(slots[:3], 1))
+            + "\n\nWhich one suits you best?"
+        )
+        task = (
+            "The customer wants to meet. Propose up to 3 of the AVAILABLE SLOTS that best match what they asked for "
+            "(day, time). If the day they asked for is not available, say so and offer the nearest ones. "
+            "Ask them to pick one; do not claim anything is booked yet."
+        )
+        try:
+            text = chat(build_sales_system(task, lead, lead.stage, extra=f"AVAILABLE SLOTS:\n{slot_list}"), history).strip()
+            return {"reply": text, "provider": provider_label(), "slots": slots}
+        except LLMUnavailable:
+            return {"reply": fallback, "provider": "rules", "slots": slots}

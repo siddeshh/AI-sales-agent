@@ -16,7 +16,7 @@ This guide describes how to run the **AI Sales Agent — Autonomous Multi-Agent 
 Open PowerShell and navigate to the project directory:
 
 ```powershell
-cd "d:\Projects\AI Sales Agent\backend"
+cd backend
 ```
 
 Create and activate virtual environment (if not already created):
@@ -39,7 +39,7 @@ The backend starts at `http://127.0.0.1:8000`.
 - Interactive Swagger API docs: `http://127.0.0.1:8000/docs`
 - Health check: `http://127.0.0.1:8000/health`
 
-The SQLite database (`sales_workforce.db`) will be automatically created and seeded with realistic demo prospects (Rahul Sharma, Priya Mehta, Amit Patil), official property brochures, and scheduled meetings.
+The SQLite database (`sales_workforce.db`) will be automatically created and seeded with the Celestial Wear demo: 12 retail and bulk-apparel leads, 4 knowledge documents (catalogue, bulk price list, shipping and returns, customisation FAQ), conversations, meetings and follow-ups. Use **Reset demo data** to reload it.
 
 ---
 
@@ -48,7 +48,7 @@ The SQLite database (`sales_workforce.db`) will be automatically created and see
 In a new terminal window:
 
 ```powershell
-cd "d:\Projects\AI Sales Agent\frontend"
+cd frontend
 ```
 
 Install dependencies:
@@ -66,8 +66,9 @@ Open your browser at:
 
 ---
 
-## 3. Demo Mode & Offline Execution
+## 3. Language model and demo mode
 
-The platform is configured with **Demo Mode (`LLM_PROVIDER="mock"`) enabled by default**.
-- **100% Offline Capability**: No third-party API keys (OpenAI / Anthropic) are required to demonstrate the complete 20-step sales workflow.
-- **Switch to External LLMs**: You can supply your `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `backend/.env` or directly through the UI in **Settings & Models**.
+- Copy `.env.example` to `backend\.env` and set `LLM_PROVIDER` plus `GROQ_API_KEY` (default provider), or `OPENAI_API_KEY`, or use a local `ollama`.
+- With no key the app still runs: every agent falls back to its rule-based template and the message is stored with `provider="rules"`. The UI labels this as Demo mode.
+- The **Settings** page provider form does not change the backend yet; use `backend\.env`.
+- The navbar shows **Demo mode · Celestial Wear** because all leads and documents are seeded sample data. **Reset demo data** reloads that seed.

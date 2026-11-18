@@ -1,229 +1,72 @@
 import React from 'react';
-import { 
-  LayoutDashboard, Users, MessageSquare, Calendar, 
-  Clock, Kanban, BookOpen, BarChart2, Cpu, 
-  Settings, Building2, UserCircle2 
+import { Link } from 'react-router-dom';
+import {
+  LayoutDashboard, Users, MessageSquare, PhoneCall, Calendar, BookOpen, Clock, Kanban, BarChart2, Cpu, Settings, Home,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SidebarProps {
   currentView: string;
   onSelectView: (view: string) => void;
-  activeIndustry: string;
+  leadsCount: number;
 }
 
-interface NavItem {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; color?: string }>;
-  badge?: string;
-}
+// Plain-word navigation, in the order the team asked for.
+const NAV: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'leads', label: 'Leads', icon: Users },
+  { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+  { id: 'voice', label: 'Voice call', icon: PhoneCall },
+  { id: 'meetings', label: 'Meetings', icon: Calendar },
+  { id: 'knowledge', label: 'Knowledge base', icon: BookOpen },
+  { id: 'followups', label: 'Follow-ups', icon: Clock },
+  { id: 'crm', label: 'CRM pipeline', icon: Kanban },
+  { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+  { id: 'agents', label: 'Agents', icon: Cpu },
+  { id: 'settings', label: 'Settings', icon: Settings },
+];
 
-interface NavSection {
-  title: string | null;
-  items: NavItem[];
-}
+export const VIEW_TITLES: Record<string, string> = Object.fromEntries(NAV.map((n) => [n.id, n.label]));
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView, activeIndustry }) => {
-  const navSections: NavSection[] = [
-    {
-      title: null,
-      items: [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      title: 'Sales',
-      items: [
-        { id: 'leads', label: 'Leads', icon: Users, badge: '3' },
-        { id: 'conversations', label: 'Conversations', icon: MessageSquare },
-        { id: 'followups', label: 'Follow-ups', icon: Clock },
-        { id: 'meetings', label: 'Meetings', icon: Calendar },
-      ],
-    },
-    {
-      title: 'AI Workforce',
-      items: [
-        { id: 'agents', label: 'AI Agents', icon: Cpu, badge: '11' },
-        { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
-      ],
-    },
-    {
-      title: 'Management',
-      items: [
-        { id: 'crm', label: 'CRM Pipeline', icon: Kanban },
-        { id: 'analytics', label: 'Analytics', icon: BarChart2 },
-      ],
-    },
-    {
-      title: 'System',
-      items: [
-        { id: 'settings', label: 'Settings', icon: Settings },
-      ],
-    },
-  ];
-
-  return (
-    <aside style={{
-      width: '240px',
-      background: '#ffffff',
-      borderRight: '1px solid #e2e8f0',
-      display: 'flex',
-      flexDirection: 'column',
-      flexShrink: 0,
-      height: '100vh',
-      userSelect: 'none',
-    }}>
-      {/* Brand Header */}
-      <div style={{
-        height: '56px',
-        padding: '0 16px',
-        borderBottom: '1px solid #e2e8f0',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-      }}>
-        <div style={{
-          width: '26px',
-          height: '26px',
-          borderRadius: '6px',
-          background: '#0f172a',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#ffffff',
-          fontWeight: 700,
-          fontSize: '13px',
-          letterSpacing: '-0.02em',
-        }}>
-          S
-        </div>
-        <div>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', lineHeight: 1.2 }}>
-            Sales Workforce
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>
-            Autonomous AI
-          </div>
-        </div>
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView, leadsCount }) => (
+  <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <Link to="/" className="flex items-center gap-2.5 px-5 py-4 hover:opacity-80">
+      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+        N
       </div>
+      <div className="leading-tight">
+        <div className="text-[15px] font-semibold">Nova</div>
+        <div className="text-xs text-muted-foreground">AI sales assistant</div>
+      </div>
+    </Link>
 
-      {/* Navigation Sections */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
-        {navSections.map((sec, secIdx) => (
-          <div key={secIdx} style={{ marginBottom: '16px' }}>
-            {sec.title && (
-              <div style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#94a3b8',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                padding: '4px 10px 6px',
-              }}>
-                {sec.title}
-              </div>
+    <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
+      {NAV.map(({ id, label, icon: Icon }) => {
+        const active = currentView === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onSelectView(id)}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[14px] transition-colors',
+              active
+                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
             )}
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {sec.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => onSelectView(item.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      width: '100%',
-                      padding: '7px 10px',
-                      borderRadius: '6px',
-                      background: isActive ? '#f1f5f9' : 'transparent',
-                      color: isActive ? '#0f172a' : '#475569',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: isActive ? 600 : 500,
-                      transition: 'background-color 0.1s ease, color 0.1s ease',
-                      textAlign: 'left',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = '#f8fafc';
-                        e.currentTarget.style.color = '#0f172a';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = '#475569';
-                      }
-                    }}
-                  >
-                    <Icon size={16} color={isActive ? '#0f172a' : '#64748b'} />
-                    <span style={{ flex: 1 }}>{item.label}</span>
-                    {item.badge && (
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        padding: '1px 6px',
-                        borderRadius: '4px',
-                        background: isActive ? '#e2e8f0' : '#f1f5f9',
-                        color: '#475569',
-                      }}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        ))}
-      </div>
+          >
+            <Icon className="size-4 shrink-0" />
+            <span className="flex-1">{label}</span>
+            {id === 'leads' && <span className="text-xs text-muted-foreground">{leadsCount}</span>}
+          </button>
+        );
+      })}
+    </nav>
 
-      {/* Footer Profile */}
-      <div style={{
-        padding: '12px 14px',
-        borderTop: '1px solid #e2e8f0',
-        background: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: '#f1f5f9',
-            border: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#475569',
-            fontSize: '12px',
-            fontWeight: 600,
-          }}>
-            AT
-          </div>
-          <div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', lineHeight: 1.2 }}>
-              Alex Turner
-            </div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>
-              Sales Representative
-            </div>
-          </div>
-        </div>
-
-        <div style={{
-          width: '7px',
-          height: '7px',
-          borderRadius: '50%',
-          background: '#16a34a',
-        }} title="System Online (11 Agents Active)" />
-      </div>
-    </aside>
-  );
-};
+    <div className="border-t border-sidebar-border px-3 py-3">
+      <Link to="/" className="flex items-center gap-3 rounded-md px-3 py-2 text-[14px] text-muted-foreground hover:bg-sidebar-accent">
+        <Home className="size-4" /> Project home
+      </Link>
+      <div className="px-3 pt-2 text-xs text-muted-foreground">Signed in as Alex Turner · demo user</div>
+    </div>
+  </aside>
+);

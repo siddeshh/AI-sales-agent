@@ -1,6 +1,6 @@
 fastapi>=0.110.0
 uvicorn[standard]>=0.28.0
-pydantic>=2.6.0
+pydantic[email]>=2.6.0
 pydantic-settings>=2.2.0
 sqlalchemy>=2.0.28
 python-multipart>=0.0.9
@@ -12,3 +12,4 @@ numpy>=1.26.0
 python-dateutil>=2.9.0
 python-dotenv>=1.0.1
 aiofiles>=23.2.1
+sentence-transformers>=3.0.0

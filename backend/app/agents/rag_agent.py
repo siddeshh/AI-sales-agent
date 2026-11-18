@@ -1,75 +1,85 @@
-from typing import Dict, Any, List
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
+
 from sqlalchemy.orm import Session
-from app.models.entities import KnowledgeDocument, KnowledgeChunk
-from app.rag.engine import RAGEngine
+
+from app.core.config import settings
+from app.models.entities import FollowUp
+from app.rag.engine import RAGEngine, ungrounded_numbers
+from app.services.llm import chat, build_sales_system, provider_label, LLMUnavailable
+
+log = logging.getLogger("nova.rag")
+
+ANSWER_INSTRUCTION = "Answer only from these sources. If the answer is not in them, say you will check and get back."
+CHECK_BACK = "I don't have that in our documents yet. Let me check with the team and get back to you."
+
 
 class KnowledgeRAGAgent:
     """
-    Agent E: Knowledge / RAG Agent
-    Responsibilities:
-    - Search vectorized knowledge base
-    - Retrieve verified product/property documentation
-    - Produce grounded answers with explicit citations
-    - Strict anti-hallucination guardrail
+    Agent 4 of 10: Knowledge Agent
+    - Semantic retrieval (all-MiniLM-L6-v2, cosine, top-k, threshold)
+    - LLM answer restricted to the retrieved chunks, with source list
+    - Grounding check: every number in the answer must appear in the sources (or the customer's question);
+      regenerate once, then fall back to "I'll check and get back" + a follow-up task
     """
-    AGENT_NAME = "Knowledge RAG Agent"
+    AGENT_NAME = "Knowledge Agent"
+
+    @staticmethod
+    def retrieve(query: str, db: Session) -> Dict[str, Any]:
+        hits = RAGEngine.search_chunks(db, query)
+        passing = [h for h in hits if h["score"] >= settings.RAG_SIMILARITY_THRESHOLD]
+        return {"hits": hits, "chunks": passing, "top_score": hits[0]["score"] if hits else 0.0}
+
+    @staticmethod
+    def _sources(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return [{"title": c["document_title"], "chunk_id": c["chunk_id"], "chunk_number": c["chunk_number"],
+                 "score": c["score"], "excerpt": c["content"][:200] + ("..." if len(c["content"]) > 200 else "")}
+                for c in chunks]
 
     @classmethod
-    def answer_question(cls, query: str, db: Session, industry: str = "real_estate") -> Dict[str, Any]:
-        # Query active chunks from database
-        chunks = db.query(KnowledgeChunk).join(KnowledgeDocument).filter(
-            KnowledgeDocument.is_processed == True
-        ).all()
+    def answer_question(cls, query: str, db: Session, lead=None, history: Optional[List[Dict[str, str]]] = None,
+                        industry: str = None) -> Dict[str, Any]:
+        r = cls.retrieve(query, db)
+        chunks = r["chunks"]
+        result = {"agent_name": cls.AGENT_NAME, "query": query, "confidence": r["top_score"],
+                  "sources": cls._sources(chunks), "chunks": chunks, "is_unavailable": False,
+                  "grounding_failed": False, "provider": "rules"}
 
-        chunks_data = [
-            {
-                "id": c.id,
-                "document_id": c.document_id,
-                "document_title": c.document.title if c.document else "Project Brochure",
-                "content": c.content,
-                "embedding_json": c.embedding_json
-            }
-            for c in chunks
-        ]
+        if not chunks:
+            return {**result, "answer": CHECK_BACK, "is_unavailable": True}
 
-        if not chunks_data:
-            # Fallback to embedded default real estate facts if no custom docs uploaded yet
-            fallback_chunks = [
-                {
-                    "id": 1,
-                    "document_id": 1,
-                    "document_title": "Skyline Greens Pune Master Brochure",
-                    "content": "Skyline Greens Pune: 2 BHK units start at ₹78 lakh (carpet area 745 sq.ft to 820 sq.ft). 3 BHK units start at ₹1.15 crore (carpet area 1,050 to 1,220 sq.ft). Located at Hinjawadi Phase 1, just 5 minutes from Embassy TechZone.",
-                },
-                {
-                    "id": 2,
-                    "document_id": 1,
-                    "document_title": "Amenities & Infrastructure Specification",
-                    "content": "Amenities include a 25,000 sq.ft luxury clubhouse, infinity temperature-controlled swimming pool, 2 fully-equipped gymnasiums, squash & badminton courts, 1 km elevated jogging track, EV charging stations for every designated parking spot.",
-                },
-                {
-                    "id": 3,
-                    "document_id": 2,
-                    "document_title": "Legal, RERA & Bank Approvals Sheet",
-                    "content": "MahaRERA Registration Number: P52100034981. Possession date for Tower A & B is December 2026. Approved by SBI, HDFC Bank, ICICI Bank, and Axis Bank with up to 90% loan eligibility and subvention schemes available.",
-                },
-                {
-                    "id": 4,
-                    "document_id": 3,
-                    "document_title": "Payment Plans & Flexi Milestone Scheme",
-                    "content": "Payment plans: 10:90 Developer Subvention Scheme (Pay 10% now, rest on possession), or Construction Linked Milestone Plan with an instant 3% early-booking cash rebate. Maintenance fee is ₹3.5 per sq.ft/month for the first 24 months.",
-                }
-            ]
-            chunks_data = fallback_chunks
+        sources_block = "\n".join(f"[{i}] {c['document_title']} (chunk {c['chunk_number']}): {c['content']}"
+                                  for i, c in enumerate(chunks, 1))
+        if lead is not None:
+            system = build_sales_system(ANSWER_INSTRUCTION, lead, lead.stage, chunks)
+        else:
+            system = f"You are a sales assistant. {ANSWER_INSTRUCTION} Reply in at most 3 sentences.\n\nSOURCES:\n{sources_block}"
+        messages = history or [{"role": "user", "content": query}]
+        allowed_text = " ".join(c["content"] for c in chunks) + " " + query
 
-        retrieved = RAGEngine.search_chunks(query, chunks_data, top_k=3)
-        grounded_result = RAGEngine.generate_grounded_answer(query, retrieved)
+        try:
+            for attempt in (1, 2):
+                answer = chat(system, messages).strip()
+                bad = ungrounded_numbers(answer, allowed_text)
+                if not bad:
+                    return {**result, "answer": answer, "provider": provider_label()}
+                log.warning("Grounding check failed (attempt %d): numbers %s not in sources", attempt, sorted(bad))
+                system += (f"\n\nYour previous answer used numbers that are not in the sources: {', '.join(sorted(bad))}. "
+                           "Use only numbers that appear in the sources.")
+        except LLMUnavailable:
+            top = chunks[0]
+            # No model: quote the best chunk verbatim, which is grounded by construction.
+            return {**result, "answer": f"From {top['document_title']}: {top['content']}"}
 
-        return {
-            "agent_name": cls.AGENT_NAME,
-            "query": query,
-            "answer": grounded_result["grounded_answer"],
-            "confidence": grounded_result["confidence"],
-            "sources": grounded_result["sources"],
-            "is_unavailable": grounded_result["is_unavailable"]
-        }
+        cls._create_followup(db, lead, query)
+        return {**result, "answer": CHECK_BACK, "grounding_failed": True, "provider": provider_label()}
+
+    @classmethod
+    def _create_followup(cls, db: Session, lead, query: str):
+        if lead is None:
+            return  # knowledge-page test question: no lead to follow up with
+        db.add(FollowUp(
+            lead_id=lead.id, cadence_step=0, due_date=datetime.utcnow() + timedelta(days=1), status="pending",
+            channel="chat", title="Answer pending product question",
+            message_content=f"Customer asked: \"{query}\". The AI answer failed the grounding check; confirm the facts and reply."))
