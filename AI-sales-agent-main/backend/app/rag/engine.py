@@ -21,26 +21,52 @@ os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 
 class EmbeddingEngine:
-    """all-MiniLM-L6-v2 (384-dim). Loaded once; vectors are L2-normalised so cosine == dot product."""
+    """all-MiniLM-L6-v2 (384-dim). Loaded once; vectors are L2-normalised so cosine == dot product.
+
+    Two interchangeable backends for the same model:
+      - fastembed (ONNX, ~150 MB RAM, no PyTorch): used on Render's 512 MB free tier
+      - sentence-transformers (PyTorch): the original local setup
+    EMBEDDING_BACKEND=fastembed | sentence-transformers | auto (default: fastembed if installed).
+    """
     DIMENSIONS = 384
     _model = None
+    _backend = None
 
     @classmethod
     def load(cls):
-        if cls._model is None:
-            from sentence_transformers import SentenceTransformer  # heavy import (torch): only when first needed
-            log.info("Loading embedding model %s", settings.EMBEDDING_MODEL)
-            try:  # cached copy first, so startup needs no internet
-                cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu", local_files_only=True)
-            except Exception:
-                log.warning("Embedding model not cached yet; downloading it once (needs internet)")
-                cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu")
+        if cls._model is not None:
+            return cls._model
+        choice = (os.getenv("EMBEDDING_BACKEND") or "auto").lower()
+        if choice in ("auto", "fastembed"):
+            try:
+                from fastembed import TextEmbedding
+                log.info("Loading embedding model %s (fastembed/ONNX)", settings.EMBEDDING_MODEL)
+                cls._model = TextEmbedding(settings.EMBEDDING_MODEL, cache_dir=os.getenv("FASTEMBED_CACHE_PATH"))
+                cls._backend = "fastembed"
+                return cls._model
+            except ImportError:
+                if choice == "fastembed":
+                    raise
+        from sentence_transformers import SentenceTransformer  # heavy import (torch): only when first needed
+        log.info("Loading embedding model %s (sentence-transformers)", settings.EMBEDDING_MODEL)
+        try:  # cached copy first, so startup needs no internet
+            cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu", local_files_only=True)
+        except Exception:
+            log.warning("Embedding model not cached yet; downloading it once (needs internet)")
+            cls._model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu")
+        cls._backend = "sentence-transformers"
         return cls._model
 
     @classmethod
     def embed(cls, texts: List[str]) -> List[List[float]]:
-        vecs = cls.load().encode(texts, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False)
-        return vecs.astype(float).round(6).tolist()
+        model = cls.load()
+        if cls._backend == "fastembed":
+            vecs = np.asarray(list(model.embed(texts, batch_size=16)), dtype=float)
+        else:
+            vecs = model.encode(texts, convert_to_numpy=True, show_progress_bar=False).astype(float)
+        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+        vecs = vecs / np.where(norms == 0, 1, norms)
+        return vecs.round(6).tolist()
 
     @classmethod
     def generate_embedding(cls, text: str) -> List[float]:

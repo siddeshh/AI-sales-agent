@@ -78,7 +78,7 @@ app.include_router(ml_router, prefix=settings.API_V1_STR)
 app.include_router(integrations_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 
-@app.get("/")
+@app.get("/api/info")
 def root():
     return {
         "platform": settings.PROJECT_NAME,
@@ -91,3 +91,25 @@ def root():
 @app.get("/health")
 def healthcheck():
     return {"status": "healthy"}
+
+
+# --- Production: serve the built React app (frontend/dist) from this same server -------------------
+# In development Vite serves the frontend on :5173 and proxies /api here, so this block is skipped.
+import os
+from pathlib import Path
+from fastapi import HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", Path(__file__).resolve().parents[2] / "frontend" / "dist"))
+if FRONTEND_DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        file = (FRONTEND_DIST / full_path).resolve()
+        if full_path and file.is_file() and FRONTEND_DIST.resolve() in file.parents:
+            return FileResponse(file)
+        return FileResponse(FRONTEND_DIST / "index.html")  # React Router handles /app, /app/leads, ...
